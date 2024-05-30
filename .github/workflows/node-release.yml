@@ -1,0 +1,99 @@
+name: Build Node Image
+
+on:
+  workflow_dispatch:
+    inputs:
+      node22Version:
+        description: 'Node 22 Version'
+        default: '22.2.0'
+        required: true
+      node21Version:
+        description: 'Node 21 Version'
+        default: '21.7.3'
+        required: true
+      node20Version:
+        description: 'Node 20 Version'
+        default: '20.14.0'
+        required: true
+      node18Version:
+        description: 'Node 18 Version'
+        default: '18.20.3'
+        required: true
+jobs:
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_PASSWORD }}
+
+      - name: Build Node-22 and Push
+        uses: docker/build-push-action@v5
+        with:
+          context: node/22
+          file: node/22/Dockerfile
+          platforms: linux/amd64,linux/arm/v7,linux/arm64/v8,linux/ppc64le,linux/s390x
+          push: true
+          build-args:
+            NODE_VERSION=${{ github.event.inputs.node22Version }}
+          tags: |
+            1panel/node:${{ github.event.inputs.node22Version }}
+          #outputs: type=image,oci-mediatypes=true,compression=zstd,compression-level=3,force-compression=true
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          
+      - name: Build Node-21 and Push
+        uses: docker/build-push-action@v5
+        with:
+          context: node/21
+          file: node/21/Dockerfile
+          platforms: linux/amd64,linux/arm/v7,linux/arm64/v8,linux/ppc64le,linux/s390x
+          push: true
+          build-args:
+            NODE_VERSION=${{ github.event.inputs.node21Version }}
+          tags: |
+            1panel/node:${{ github.event.inputs.node21Version }}
+          #outputs: type=image,oci-mediatypes=true,compression=zstd,compression-level=3,force-compression=true
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Build Node-20 and Push
+        uses: docker/build-push-action@v5
+        with:
+          context: node/20
+          file: node/20/Dockerfile
+          platforms: linux/amd64,linux/arm/v7,linux/arm64/v8,linux/ppc64le,linux/s390x
+          push: true
+          build-args:
+            NODE_VERSION=${{ github.event.inputs.node20Version }}
+          tags: |
+            1panel/node:${{ github.event.inputs.node20Version }}
+          #outputs: type=image,oci-mediatypes=true,compression=zstd,compression-level=3,force-compression=true
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Build Node-18 and Push
+        uses: docker/build-push-action@v5
+        with:
+          context: node/18
+          file: node/18/Dockerfile
+          platforms: linux/amd64,linux/arm/v7,linux/arm64/v8,linux/ppc64le,linux/s390x
+          push: true
+          build-args:
+            NODE_VERSION=${{ github.event.inputs.node18Version }}
+          tags: |
+            1panel/node:${{ github.event.inputs.node18Version }}
+          #outputs: type=image,oci-mediatypes=true,compression=zstd,compression-level=3,force-compression=true
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
