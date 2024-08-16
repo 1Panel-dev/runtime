@@ -41,8 +41,8 @@ jobs:
       - name: Build Node-22 and Push
         uses: docker/build-push-action@v5
         with:
-          context: node/22
-          file: node/22/Dockerfile
+          context: node
+          file: node/Dockerfile
           platforms: linux/amd64,linux/arm/v7,linux/arm64/v8,linux/ppc64le,linux/s390x
           push: true
           build-args:
@@ -56,8 +56,8 @@ jobs:
       - name: Build Node-21 and Push
         uses: docker/build-push-action@v5
         with:
-          context: node/21
-          file: node/21/Dockerfile
+          context: node
+          file: node/Dockerfile
           platforms: linux/amd64,linux/arm/v7,linux/arm64/v8,linux/ppc64le,linux/s390x
           push: true
           build-args:
@@ -71,8 +71,8 @@ jobs:
       - name: Build Node-20 and Push
         uses: docker/build-push-action@v5
         with:
-          context: node/20
-          file: node/20/Dockerfile
+          context: node
+          file: node/Dockerfile
           platforms: linux/amd64,linux/arm/v7,linux/arm64/v8,linux/ppc64le,linux/s390x
           push: true
           build-args:
@@ -86,8 +86,8 @@ jobs:
       - name: Build Node-18 and Push
         uses: docker/build-push-action@v5
         with:
-          context: node/18
-          file: node/18/Dockerfile
+          context: node
+          file: node/Dockerfile
           platforms: linux/amd64,linux/arm/v7,linux/arm64/v8,linux/ppc64le,linux/s390x
           push: true
           build-args:
