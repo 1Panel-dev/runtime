@@ -53,7 +53,7 @@ jobs:
           build-args:
             PHP_VERSION=${{ github.event.inputs.php74Version }}
           tags: |
-            1panel/php-fpm:${{ github.event.inputs.php74Version }}
+            1panel/php:${{ github.event.inputs.php74Version }}-fpm
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -67,7 +67,7 @@ jobs:
           build-args:
             PHP_VERSION=${{ github.event.inputs.php73Version }}
           tags: |
-            1panel/php-fpm:${{ github.event.inputs.php73Version }}
+            1panel/php:${{ github.event.inputs.php73Version }}-fpm
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -81,7 +81,7 @@ jobs:
           build-args:
             PHP_VERSION=${{ github.event.inputs.php72Version }}
           tags: |
-            1panel/php-fpm:${{ github.event.inputs.php72Version }}
+            1panel/php:${{ github.event.inputs.php72Version }}-fpm
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -95,7 +95,7 @@ jobs:
           build-args:
             PHP_VERSION=${{ github.event.inputs.php71Version }}
           tags: |
-            1panel/php-fpm:${{ github.event.inputs.php71Version }}
+            1panel/php:${{ github.event.inputs.php71Version }}-fpm
           cache-from: type=gha
           cache-to: type=gha,mode=max
           
@@ -109,6 +109,6 @@ jobs:
           build-args:
             PHP_VERSION=${{ github.event.inputs.php70Version }}
           tags: |
-            1panel/php-fpm:${{ github.event.inputs.php70Version }}
+            1panel/php:${{ github.event.inputs.php70Version }}-fpm
           cache-from: type=gha
           cache-to: type=gha,mode=max
