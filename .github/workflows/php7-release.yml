@@ -1,4 +1,4 @@
-name: Build PHP Image
+name: Build PHP 7 Image
 
 on:
   workflow_dispatch:
