@@ -17,8 +17,13 @@ RUN cd /tmp && \
     python3 setup.py install && \
     mkdir -p /var/log/supervisor /etc/supervisor/conf.d  
 
-RUN  chmod uga+x /usr/local/bin/install-php-extensions && \
-     chmod +x /usr/bin/composer
+RUN curl -o /tmp/composer-setup.php https://getcomposer.org/installer \
+    && php /tmp/composer-setup.php --install-dir=/tmp \
+    && mv /tmp/composer.phar /usr/bin/composer \
+    && chmod +x /usr/bin/composer \
+    && rm -rf /tmp/composer-setup.php
+
+RUN chmod uga+x /usr/local/bin/install-php-extensions 
 
 ENV COMPOSER_HOME=/usr/bin/composer
 

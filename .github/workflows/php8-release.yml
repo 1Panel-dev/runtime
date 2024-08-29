@@ -42,8 +42,8 @@ jobs:
       - name: Build PHP-8.3 and Push
         uses: docker/build-push-action@v5
         with:
-          context: php/7.2
-          file: php/7.2/Dockerfile
+          context: php/7
+          file: php/7/Dockerfile
           platforms: linux/amd64,linux/arm/v7,linux/arm64/v8,linux/s390x
           push: true
           build-args:
@@ -56,8 +56,8 @@ jobs:
       - name: Build PHP-8.2 and Push
         uses: docker/build-push-action@v5
         with:
-          context: php/7.2
-          file: php/7.2/Dockerfile
+          context: php/7
+          file: php/7/Dockerfile
           platforms: linux/amd64,linux/arm/v7,linux/arm64/v8,linux/s390x
           push: true
           build-args:
@@ -70,8 +70,8 @@ jobs:
       - name: Build PHP-8.1 and Push
         uses: docker/build-push-action@v5
         with:
-          context: php/7.2
-          file: php/7.2/Dockerfile
+          context: php/7
+          file: php/7/Dockerfile
           platforms: linux/amd64,linux/arm/v7,linux/arm64/v8,linux/s390x
           push: true
           build-args:
@@ -84,8 +84,8 @@ jobs:
       - name: Build PHP-8.0 and Push
         uses: docker/build-push-action@v5
         with:
-          context: php/7.2
-          file: php/7.2/Dockerfile
+          context: php/7
+          file: php/7/Dockerfile
           platforms: linux/amd64,linux/arm/v7,linux/arm64/v8,linux/s390x
           push: true
           build-args:
