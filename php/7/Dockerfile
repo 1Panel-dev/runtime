@@ -6,10 +6,6 @@ COPY ./data/php-fpm.ini /etc/supervisor.d/php-fpm.ini
 COPY ./data/supervisord.conf /etc/supervisord.conf
 COPY ./data/install-php-extensions  /usr/local/bin/
 COPY ./data/composer /usr/bin/composer
-
-
-ENV PHP_INI_DIR /usr/local/etc/php
-ENV PHP_EXTENSION_DIR /php/extensions
  
 RUN apt-get update && \
     apt-get install -y python3 python3-pip git && \
@@ -30,11 +26,6 @@ RUN curl -o /tmp/composer-setup.php https://getcomposer.org/installer \
 RUN chmod uga+x /usr/local/bin/install-php-extensions 
 
 ENV COMPOSER_HOME=/usr/bin/composer
-
-RUN mkdir -p $PHP_EXTENSION_DIR
-
-RUN echo "extension_dir=$PHP_EXTENSION_DIR" > $PHP_INI_DIR/conf.d/00-custom-ext-dir.ini
-
 
 RUN usermod -u 1000 www-data && groupmod -g 1000 www-data
 
