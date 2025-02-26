@@ -3,17 +3,21 @@ name: Build PHP 8 Image
 on:
   workflow_dispatch:
     inputs:
+      php84Version:
+        description: 'PHP 8.4 Version'
+        default: '8.4.3'
+        required: true
       php83Version:
         description: 'PHP 8.3 Version'
-        default: '8.3.8'
+        default: '8.3.16'
         required: true
       php82Version:
         description: 'PHP 8.2 Version'
-        default: '8.2.20'
+        default: '8.2.27'
         required: true
       php81Version:
         description: 'PHP 8.1 Version'
-        default: '8.1.29'
+        default: '8.1.31'
         required: true
       php80Version:
         description: 'PHP 8.0 Version'
@@ -38,6 +42,19 @@ jobs:
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_PASSWORD }}
+      - name: Build PHP-8.4 and Push
+        uses: docker/build-push-action@v5
+        with:
+          context: php/7
+          file: php/7/Dockerfile
+          platforms: linux/amd64,linux/arm/v7,linux/arm64/v8,linux/s390x
+          push: true
+          build-args:
+            PHP_VERSION=${{ github.event.inputs.php43Version }}
+          tags: |
+            1panel/php:${{ github.event.inputs.php43Version }}-fpm
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
       - name: Build PHP-8.3 and Push
         uses: docker/build-push-action@v5
