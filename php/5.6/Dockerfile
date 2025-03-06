@@ -7,11 +7,10 @@ COPY ./data/php-fpm.ini /etc/supervisor.d/php-fpm.ini
 COPY ./data/supervisord.conf /etc/supervisord.conf
 
 RUN echo "deb http://archive.debian.org/debian/ stretch main contrib non-free" > /etc/apt/sources.list && \
-    echo "deb http://archive.debian.org/debian-security/ stretch/updates main contrib non-free" >> /etc/apt/sources.list && \
-    apt-get update 
-
+    echo "deb http://archive.debian.org/debian-security/ stretch/updates main contrib non-free" >> /etc/apt/sources.list 
+    
 RUN apt-get update && \
-    apt-get install -y supervisor && \
+    apt-get install -y supervisor iputils-ping && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
     
