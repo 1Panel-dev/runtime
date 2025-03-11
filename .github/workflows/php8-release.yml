@@ -50,9 +50,9 @@ jobs:
           platforms: linux/amd64,linux/arm/v7,linux/arm64/v8,linux/s390x
           push: true
           build-args:
-            PHP_VERSION=${{ github.event.inputs.php43Version }}
+            PHP_VERSION=${{ github.event.inputs.php84Version }}
           tags: |
-            1panel/php:${{ github.event.inputs.php43Version }}-fpm
+            1panel/php:${{ github.event.inputs.php84Version }}-fpm
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
