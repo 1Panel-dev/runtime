@@ -5,15 +5,15 @@ on:
     inputs:
       php84Version:
         description: 'PHP 8.4 Version'
-        default: '8.4.3'
+        default: '8.4.6'
         required: true
       php83Version:
         description: 'PHP 8.3 Version'
-        default: '8.3.16'
+        default: '8.3.20'
         required: true
       php82Version:
         description: 'PHP 8.2 Version'
-        default: '8.2.27'
+        default: '8.2.28'
         required: true
       php81Version:
         description: 'PHP 8.1 Version'
