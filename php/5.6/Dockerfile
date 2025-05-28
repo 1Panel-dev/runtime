@@ -17,7 +17,7 @@ RUN apt-get update && \
 RUN chmod uga+x /usr/local/bin/install-php-extensions && \
     chmod +x /usr/bin/composer 
     
-ENV COMPOSER_HOME=/usr/bin/composer
+ENV COMPOSER_HOME=/tmp/.composer
 
 RUN usermod -u 1000 www-data && groupmod -g 1000 www-data
 
