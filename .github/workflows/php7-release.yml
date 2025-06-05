@@ -19,10 +19,6 @@ on:
         description: 'PHP 7.1 Version'
         default: '7.1.33'
         required: true
-      php70Version:
-        description: 'PHP 7.0 Version'
-        default: '7.0.33'
-        required: true
 
 jobs:
   docker:
@@ -96,19 +92,5 @@ jobs:
             PHP_VERSION=${{ github.event.inputs.php71Version }}
           tags: |
             1panel/php:${{ github.event.inputs.php71Version }}-fpm
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-          
-      - name: Build PHP-7.0 and Push
-        uses: docker/build-push-action@v5
-        with:
-          context: php/7
-          file: php/7/Dockerfile
-          platforms: linux/amd64,linux/arm/v7,linux/arm64/v8
-          push: true
-          build-args:
-            PHP_VERSION=${{ github.event.inputs.php70Version }}
-          tags: |
-            1panel/php:${{ github.event.inputs.php70Version }}-fpm
           cache-from: type=gha
           cache-to: type=gha,mode=max
