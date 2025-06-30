@@ -5,7 +5,7 @@ on:
     inputs:
       node22Version:
         description: 'Node 22 Version'
-        default: '22.2.0'
+        default: '22.14.0'
         required: true
       node21Version:
         description: 'Node 21 Version'
