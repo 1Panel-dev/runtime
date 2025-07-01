@@ -5,7 +5,7 @@ on:
     inputs:
       node22Version:
         description: 'Node 22 Version'
-        default: '22.2.0'
+        default: '22.17.0'
         required: true
       node21Version:
         description: 'Node 21 Version'
@@ -13,11 +13,11 @@ on:
         required: true
       node20Version:
         description: 'Node 20 Version'
-        default: '20.14.0'
+        default: '20.19.3'
         required: true
       node18Version:
         description: 'Node 18 Version'
-        default: '18.20.3'
+        default: '18.20.8'
         required: true
 jobs:
   docker:
