@@ -1,0 +1,28 @@
+branch:
+  - buttons: 
+    - name: "编译 Node.js 镜像"
+      event: web_trigger_build_node_image
+      permissions:
+        roles:
+          - owner
+      inputs:
+        NODE_VERSION:
+          name: "Node.js 版本"
+          description: "Node.js 版本"
+          default: "18.20.8"
+          required: true
+#        node21Version:
+#          name: "Node.js 21.x 版本"
+#          description: "Node.js 21.x 版本"
+#          default: "21.7.3"
+#          required: true
+#        node20Version:
+#          name: "Node.js 20.x 版本"
+#          description: "Node.js 20.x 版本"
+#          default: "20.19.3"
+#          required: true
+#        node18Version:
+#          name: "Node.js 18.x 版本"
+#          description: "Node.js 18.x 版本"
+#          default: "18.20.8"
+#          required: true

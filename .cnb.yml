@@ -1,0 +1,24 @@
+main:
+  web_trigger_build_node_image:
+    - runner:
+         tags: cnb:arch:amd64
+      services:
+        - docker
+      imports: https://cnb.cool/1Panel-dev/secrets/-/blob/main/docker-1panel-envs.yml
+      stages:
+        - name: set docker tag
+          script: echo -n "${DOCKER_REGISTRY}/${DOCKER_GROUP}/node:$NODE_VERSION"
+          exports:
+            info: IMAGE_TAG
+        - name: docker login
+          script: docker login -u ${DOCKER_USER} -p "${DOCKER_PWD}" ${DOCKER_REGISTRY}
+          
+        - name: docker build and push
+          script: docker buildx build 
+            --platform linux/amd64,linux/arm/v7,linux/arm64,linux/ppc64le,linux/s390x 
+            --build-arg NODE_VERSION=$NODE_VERSION 
+            -t $IMAGE_TAG 
+            -f node/Dockerfile 
+            node/ 
+            --push
+  

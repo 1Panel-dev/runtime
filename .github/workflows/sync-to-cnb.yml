@@ -20,4 +20,5 @@ jobs:
             -e PLUGIN_AUTH_TYPE="https" \
             -e PLUGIN_USERNAME="cnb" \
             -e PLUGIN_PASSWORD=${{ secrets.CNB_PASSWORD }} \
+            -e PLUGIN_FORCE=true \
             tencentcom/git-sync
