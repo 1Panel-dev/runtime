@@ -24,7 +24,8 @@ ENV PHPIZE_DEPS \
 		dpkg-dev \
 		file \
 		g++ \
-		gcc \
+		gcc-8 \
+		g++-8 \
 		libc-dev \
 		make \
 		pkg-config \
@@ -39,6 +40,8 @@ RUN set -eux; \
 		curl \
 		xz-utils \
 	; \
+    update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-8 80 && \
+    update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-8 80 && \
 	rm -rf /var/lib/apt/lists/*
 
 ENV PHP_INI_DIR /usr/local/etc/php
