@@ -1,10 +1,10 @@
-name: Build PHP 7.2.34 Image
+name: Build PHP 7.x Image
 
 on:
   workflow_dispatch:
     inputs:
       php_version:
-        description: 'PHP 7.2 Version'
+        description: 'PHP 7.x Version'
         default: '7.2.34'
         required: true
       install_ext_version:
@@ -31,15 +31,14 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_PASSWORD }}
 
-      - name: Build PHP-7.2 and Push
+      - name: Build PHP-7.x and Push
         uses: docker/build-push-action@v5
         with:
-          context: php/7.2.34
-          file: php/7.2.34/Dockerfile
+          context: php/${{ github.event.inputs.php_version }}
+          file: php/${{ github.event.inputs.php_version }}/Dockerfile
           platforms: linux/amd64,linux/arm/v7,linux/arm64/v8
           push: true
           build-args:
-            PHP_VERSION=${{ github.event.inputs.php_version }}
             INSTALL_EXT_VERSION=${{ github.event.inputs.install_ext_version }}
           tags: |
             1panel/php:${{ github.event.inputs.php_version }}-fpm
