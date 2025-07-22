@@ -36,11 +36,12 @@ main:
           script: docker login -u ${DOCKER_USER} -p "${DOCKER_PWD}" ${DOCKER_REGISTRY}
 
         - name: docker build and push
-          script: docker buildx build
-            --platform linux/amd64,linux/arm/v7,linux/arm64,linux/ppc64le,linux/s390x
-            --build-arg PHP_VERSION=$PHP_VERSION INSTALL_EXT_VERSION=$INSTALL_EXT_VERSION
-            -t $IMAGE_TAG
-            -f php/7.2.33/Dockerfile
-            php/7.2.33/
-            --push
+          script: docker buildx build \
+              --platform linux/amd64,linux/arm/v7,linux/arm64,linux/ppc64le,linux/s390x \
+              --build-arg PHP_VERSION=$PHP_VERSION \
+              --build-arg INSTALL_EXT_VERSION=$INSTALL_EXT_VERSION \
+              -t $IMAGE_TAG \
+              -f php/7.2.33/Dockerfile \
+              php/7.2.33/ \
+              --push
   
