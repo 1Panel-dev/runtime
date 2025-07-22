@@ -4,7 +4,7 @@
 # PLEASE DO NOT EDIT IT DIRECTLY.
 #
 ARG INSTALL_EXT_VERSION
-FROM php:7.1.33-fpm AS php-source
+FROM php:7.2.33-fpm AS php-source
 
 FROM debian:bullseye-slim
 
@@ -58,17 +58,17 @@ ENV PHP_EXTRA_CONFIGURE_ARGS --enable-fpm --with-fpm-user=www-data --with-fpm-gr
 # Make PHP's main executable position-independent (improves ASLR security mechanism, and has no performance impact on x86_64)
 # Enable optimization (-O2)
 # Enable linker optimization (this sorts the hash buckets to improve cache locality, and is non-default)
-# Adds GNU HASH segments to generated executables (this is used if present, and is much faster than sysv hash; in this configuration, sysv hash is also generated)
 # https://github.com/docker-library/php/issues/272
-ENV PHP_CFLAGS="-fstack-protector-strong -fpic -fpie -O2"
+# -D_LARGEFILE_SOURCE and -D_FILE_OFFSET_BITS=64 (https://www.php.net/manual/en/intro.filesystem.php)
+ENV PHP_CFLAGS="-fstack-protector-strong -fpic -fpie -O2 -D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=64"
 ENV PHP_CPPFLAGS="$PHP_CFLAGS"
-ENV PHP_LDFLAGS="-Wl,-O1 -Wl,--hash-style=both -pie"
+ENV PHP_LDFLAGS="-Wl,-O1 -pie"
 
-ENV GPG_KEYS A917B1ECDA84AEC2B568FED6F50ABC807BD5DCD0 528995BFEDFBA7191D46839EF9BA0ADA31CBD89E 1729F83938DA44E27BA0F4D3DBDB397470D12172
+ENV GPG_KEYS 1729F83938DA44E27BA0F4D3DBDB397470D12172 B1B44D8F021E4E2D6021E995DC9FF8D3EE5AF27F
 
-ENV PHP_VERSION 7.1.33
-ENV PHP_URL="https://www.php.net/get/php-7.1.33.tar.xz/from/this/mirror" PHP_ASC_URL="https://www.php.net/get/php-7.1.33.tar.xz.asc/from/this/mirror"
-#ENV PHP_SHA256="7f38b5bdaae3184d325a8c70e86c010afcc33651d15faafe277a0db6d2ea2741" PHP_MD5=""
+ENV PHP_VERSION 7.2.33
+ENV PHP_URL="https://www.php.net/distributions/php-7.2.33.tar.xz" PHP_ASC_URL="https://www.php.net/distributions/php-7.2.33.tar.xz.asc"
+ENV PHP_SHA256="0f160a3483ffce36be5962fab7bcf09d605ee66c5707df83e4195cb796bbb03a" PHP_MD5=""
 
 RUN set -eux; \
 	\
@@ -113,8 +113,10 @@ RUN set -eux; \
 	savedAptMark="$(apt-mark showmanual)"; \
 	apt-get update; \
 	apt-get install -y --no-install-recommends \
+		libargon2-dev \
 		libcurl4-openssl-dev \
 		libedit-dev \
+		libsodium-dev \
 		libsqlite3-dev \
 		libssl-dev \
 		libxml2-dev \
@@ -141,7 +143,7 @@ RUN set -eux; \
 		--with-config-file-path="$PHP_INI_DIR" \
 		--with-config-file-scan-dir="$PHP_INI_DIR/conf.d" \
 		\
-# make sure invalid --configure-flags are fatal errors intead of just warnings
+# make sure invalid --configure-flags are fatal errors instead of just warnings
 		--enable-option-checking=fatal \
 		\
 # https://github.com/docker-library/php/issues/439
@@ -153,6 +155,10 @@ RUN set -eux; \
 		--enable-mbstring \
 # --enable-mysqlnd is included here because it's harder to compile after the fact than extensions are (since it's a plugin for several extensions, not an extension in itself)
 		--enable-mysqlnd \
+# https://wiki.php.net/rfc/argon2_password_hash (7.2+)
+		--with-password-argon2 \
+# https://wiki.php.net/rfc/libsodium
+		--with-sodium=shared \
 # always build against system sqlite3 (https://github.com/php/php-src/commit/6083a387a81dbbd66d6316a3a12a63f06d5f7109)
 		--with-pdo-sqlite=/usr \
 		--with-sqlite3=/usr \
@@ -205,6 +211,9 @@ RUN set -eux; \
 COPY --from=php-source /usr/local/bin/docker-php-ext-* /usr/local/bin/
 COPY --from=php-source /usr/local/bin/docker-php-entrypoint /usr/local/bin/
 
+# sodium was built as a shared module (so that it can be replaced later if so desired), so let's enable it too (https://github.com/docker-library/php/issues/598)
+RUN docker-php-ext-enable sodium
+
 # temporary "freetype-config" workaround for https://github.com/docker-library/php/issues/865 (https://bugs.php.net/bug.php?id=76324)
 RUN { echo '#!/bin/sh'; echo 'exec pkg-config "$@" freetype2'; } > /usr/local/bin/freetype-config && chmod +x /usr/local/bin/freetype-config
 
@@ -248,6 +257,10 @@ RUN set -eux; \
 		echo 'listen = 9000'; \
 	} | tee php-fpm.d/zz-docker.conf
 
+# Override stop signal to stop process gracefully
+# https://github.com/php/php-src/blob/17baa87faddc2550def3ae7314236826bc1b1398/sapi/fpm/php-fpm.8.in#L163
+#STOPSIGNAL SIGQUIT
+
 COPY ./data/supervisor-4.2.5.tar.gz /tmp/
 COPY ./data/php-fpm.ini /etc/supervisor.d/php-fpm.ini
 COPY ./data/supervisord.conf /etc/supervisord.conf
@@ -276,10 +289,6 @@ ENV COMPOSER_HOME=/tmp/.composer
 RUN usermod -u 1000 www-data && groupmod -g 1000 www-data
 
 ENTRYPOINT ["supervisord", "--nodaemon", "--configuration", "/etc/supervisord.conf"]
-
-# Override stop signal to stop process gracefully
-# https://github.com/php/php-src/blob/17baa87faddc2550def3ae7314236826bc1b1398/sapi/fpm/php-fpm.8.in#L163
-#STOPSIGNAL SIGQUIT
 
 EXPOSE 9000
 WORKDIR /www

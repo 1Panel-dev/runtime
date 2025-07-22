@@ -1,7 +1,7 @@
 main:
   web_trigger_build_node_image:
     - runner:
-         tags: cnb:arch:amd64
+         tags: cnb:arch:amd64:containerd-snapshotter
       services:
         - docker
       imports: https://cnb.cool/1Panel-dev/secrets/-/blob/main/docker-1panel-envs.yml
