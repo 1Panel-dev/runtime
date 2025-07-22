@@ -40,7 +40,7 @@ main:
             --platform linux/amd64,linux/arm/v7,linux/arm64,linux/ppc64le,linux/s390x
             --build-arg PHP_VERSION=$PHP_VERSION INSTALL_EXT_VERSION=$INSTALL_EXT_VERSION
             -t $IMAGE_TAG
-            -f node/Dockerfile
-            node/
+            -f php/7.2.33/Dockerfile
+            php/7.2.33/
             --push
   
