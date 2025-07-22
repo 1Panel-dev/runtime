@@ -70,6 +70,9 @@ ENV PHP_VERSION 7.2.33
 ENV PHP_URL="https://www.php.net/distributions/php-7.2.33.tar.xz" PHP_ASC_URL="https://www.php.net/distributions/php-7.2.33.tar.xz.asc"
 ENV PHP_SHA256="0f160a3483ffce36be5962fab7bcf09d605ee66c5707df83e4195cb796bbb03a" PHP_MD5=""
 
+
+COPY ./data/php-7.2.33.tar.xz /usr/src/php.tar.xz
+
 RUN set -eux; \
 	\
 	savedAptMark="$(apt-mark showmanual)"; \
@@ -80,8 +83,8 @@ RUN set -eux; \
 	mkdir -p /usr/src; \
 	cd /usr/src; \
 	\
-	curl -fsSL -o php.tar.xz "$PHP_URL"; \
-	\
+#	curl -fsSL -o php.tar.xz "$PHP_URL"; \
+#	\
 #	if [ -n "$PHP_SHA256" ]; then \
 #		echo "$PHP_SHA256 *php.tar.xz" | sha256sum -c -; \
 #	fi; \
@@ -107,6 +110,7 @@ RUN set -eux; \
 #COPY docker-php-source /usr/local/bin/
 
 COPY --from=php-source /usr/local/bin/docker-php-source /usr/local/bin/
+
 
 RUN set -eux; \
 	\
