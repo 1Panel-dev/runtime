@@ -239,8 +239,6 @@ RUN curl -o /tmp/composer-setup.php https://getcomposer.org/installer \
     && rm -rf /tmp/composer-setup.php
 
 
-RUN chmod uga+x /usr/local/bin/install-php-extensions 
-
 ENV COMPOSER_HOME=/tmp/.composer
 
 RUN usermod -u 1000 www-data && groupmod -g 1000 www-data
