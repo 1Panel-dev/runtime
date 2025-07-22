@@ -21,7 +21,7 @@ main:
             -f node/Dockerfile 
             node/ 
             --push
-  web_trigger_build_php_7_2_33_image:
+  web_trigger_build_php_7_x_image:
     - runner:
         tags: cnb:arch:amd64:containerd-snapshotter
       services:
@@ -41,7 +41,7 @@ main:
               --build-arg PHP_VERSION=$PHP_VERSION 
               --build-arg INSTALL_EXT_VERSION=$INSTALL_EXT_VERSION 
               -t $IMAGE_TAG 
-              -f php/7.2.33/Dockerfile 
-              php/7.2.33/ 
+              -f php/$PHP_VERSION/Dockerfile 
+              php/$PHP_VERSION/ 
               --push
   

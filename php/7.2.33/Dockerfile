@@ -3,10 +3,10 @@
 #
 # PLEASE DO NOT EDIT IT DIRECTLY.
 #
-ARG INSTALL_EXT_VERSION
 FROM php:7.2.33-fpm AS php-source
 
 FROM debian:bullseye-slim
+ARG INSTALL_EXT_VERSION
 
 # prevent Debian's PHP packages from being installed
 # https://github.com/docker-library/php/pull/542

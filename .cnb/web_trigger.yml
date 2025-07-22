@@ -1,7 +1,7 @@
 branch:
   - buttons:
-      - name: "编译 PHP 7.2.33 镜像"
-        event: web_trigger_build_php_7_2_33_image
+      - name: "编译 PHP 7.x 镜像"
+        event: web_trigger_build_php_7_x_image
         permissions:
           roles:
             - owner

@@ -3,10 +3,10 @@
 #
 # PLEASE DO NOT EDIT IT DIRECTLY.
 #
-ARG INSTALL_EXT_VERSION
 FROM php:7.1.33-fpm AS php-source
 
 FROM debian:bullseye-slim
+ARG INSTALL_EXT_VERSION
 
 # prevent Debian's PHP packages from being installed
 # https://github.com/docker-library/php/pull/542
@@ -255,8 +255,7 @@ COPY ./data/supervisord.conf /etc/supervisord.conf
 RUN apt-get update && \
     apt-get install -y python3 python3-pip git wget&& \
     rm -rf /var/lib/apt/lists/* && \
-    curl -fsSL -o /usr/local/bin/install-php-extensions \
-    https://github.com/mlocati/docker-php-extension-installer/releases/download/${INSTALL_EXT_VERSION}/install-php-extensions && \
+    curl -fsSL -o /usr/local/bin/install-php-extensions https://github.com/mlocati/docker-php-extension-installer/releases/download/${INSTALL_EXT_VERSION}/install-php-extensions && \
     chmod uga+x /usr/local/bin/install-php-extensions    
     
 RUN cd /tmp && \
