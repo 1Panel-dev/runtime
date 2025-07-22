@@ -5,7 +5,7 @@
 #
 FROM php:7.2.33-fpm AS php-source
 
-FROM debian:bullseye-slim
+FROM debian:bookworm-slim
 ARG INSTALL_EXT_VERSION
 
 # prevent Debian's PHP packages from being installed
