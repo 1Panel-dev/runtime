@@ -5,7 +5,7 @@
 #
 FROM php:7.1.33-fpm AS php-source
 
-FROM debian:bullseye-slim
+FROM debian:bookworm-slim
 ARG INSTALL_EXT_VERSION
 
 # prevent Debian's PHP packages from being installed
@@ -64,10 +64,10 @@ ENV PHP_CFLAGS="-fstack-protector-strong -fpic -fpie -O2"
 ENV PHP_CPPFLAGS="$PHP_CFLAGS"
 ENV PHP_LDFLAGS="-Wl,-O1 -Wl,--hash-style=both -pie"
 
-ENV GPG_KEYS A917B1ECDA84AEC2B568FED6F50ABC807BD5DCD0 528995BFEDFBA7191D46839EF9BA0ADA31CBD89E 1729F83938DA44E27BA0F4D3DBDB397470D12172
+#ENV GPG_KEYS A917B1ECDA84AEC2B568FED6F50ABC807BD5DCD0 528995BFEDFBA7191D46839EF9BA0ADA31CBD89E 1729F83938DA44E27BA0F4D3DBDB397470D12172
 
-ENV PHP_VERSION 7.1.33
-ENV PHP_URL="https://www.php.net/get/php-7.1.33.tar.xz/from/this/mirror" PHP_ASC_URL="https://www.php.net/get/php-7.1.33.tar.xz.asc/from/this/mirror"
+#ENV PHP_VERSION 7.1.33
+#ENV PHP_URL="https://www.php.net/get/php-7.1.33.tar.xz/from/this/mirror" PHP_ASC_URL="https://www.php.net/get/php-7.1.33.tar.xz.asc/from/this/mirror"
 #ENV PHP_SHA256="7f38b5bdaae3184d325a8c70e86c010afcc33651d15faafe277a0db6d2ea2741" PHP_MD5=""
 
 RUN set -eux; \
@@ -78,34 +78,12 @@ RUN set -eux; \
 	rm -rf /var/lib/apt/lists/*; \
 	\
 	mkdir -p /usr/src; \
-	cd /usr/src; \
-	\
-	curl -fsSL -o php.tar.xz "$PHP_URL"; \
-	\
-#	if [ -n "$PHP_SHA256" ]; then \
-#		echo "$PHP_SHA256 *php.tar.xz" | sha256sum -c -; \
-#	fi; \
-#	if [ -n "$PHP_MD5" ]; then \
-#		echo "$PHP_MD5 *php.tar.xz" | md5sum -c -; \
-#	fi; \
-#	\
-#	if [ -n "$PHP_ASC_URL" ]; then \
-#		curl -fsSL -o php.tar.xz.asc "$PHP_ASC_URL"; \
-#		export GNUPGHOME="$(mktemp -d)"; \
-#		for key in $GPG_KEYS; do \
-#			gpg --batch --keyserver ha.pool.sks-keyservers.net --recv-keys "$key"; \
-#		done; \
-#		gpg --batch --verify php.tar.xz.asc php.tar.xz; \
-#		gpgconf --kill all; \
-#		rm -rf "$GNUPGHOME"; \
-#	fi; \
-#	\
-	apt-mark auto '.*' > /dev/null; \
-	apt-mark manual $savedAptMark > /dev/null; \
-	apt-get purge -y --auto-remove -o APT::AutoRemove::RecommendsImportant=false
+    apt-mark auto '.*' > /dev/null; \
+    apt-mark manual $savedAptMark > /dev/null; \
+    apt-get purge -y --auto-remove -o APT::AutoRemove::RecommendsImportant=false
 
 #COPY docker-php-source /usr/local/bin/
-
+COPY ./data/php-7.1.33.tar.xz /usr/src/php.tar.xz
 COPY --from=php-source /usr/local/bin/docker-php-source /usr/local/bin/
 
 RUN set -eux; \
