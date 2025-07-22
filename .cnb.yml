@@ -21,4 +21,26 @@ main:
             -f node/Dockerfile 
             node/ 
             --push
+  web_trigger_build_php_7_2_33_image:
+    - runner:
+        tags: cnb:arch:amd64:containerd-snapshotter
+      services:
+        - docker
+      imports: https://cnb.cool/1Panel-dev/secrets/-/blob/main/docker-1panel-envs.yml
+      stages:
+        - name: set docker tag
+          script: echo -n "${DOCKER_REGISTRY}/${DOCKER_GROUP}/php-fpm:$PHP_VERSION"
+          exports:
+            info: IMAGE_TAG
+        - name: docker login
+          script: docker login -u ${DOCKER_USER} -p "${DOCKER_PWD}" ${DOCKER_REGISTRY}
+
+        - name: docker build and push
+          script: docker buildx build
+            --platform linux/amd64,linux/arm/v7,linux/arm64,linux/ppc64le,linux/s390x
+            --build-arg PHP_VERSION=$PHP_VERSION INSTALL_EXT_VERSION=$INSTALL_EXT_VERSION
+            -t $IMAGE_TAG
+            -f node/Dockerfile
+            node/
+            --push
   

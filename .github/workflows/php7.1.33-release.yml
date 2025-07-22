@@ -40,7 +40,7 @@ jobs:
           push: true
           build-args:
             PHP_VERSION=${{ github.event.inputs.php_version }}
-            INSTALL_PHP_EXTENSIONS_VERSION=${{ github.event.inputs.install_ext_version }}
+            INSTALL_EXT_VERSION=${{ github.event.inputs.install_ext_version }}
           tags: |
             1panel/php:${{ github.event.inputs.php_version }}-fpm
           cache-from: type=gha

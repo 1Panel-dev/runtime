@@ -1,4 +1,21 @@
 branch:
+  - buttons:
+      - name: "编译 PHP 7.2.33 镜像"
+        event: web_trigger_build_php_7_2_33_image
+        permissions:
+          roles:
+            - owner
+        inputs:
+          PHP_VERSION:
+            name: "PHP 版本"
+            description: "PHP 版本"
+            default: "7.2.33"
+            required: true
+          INSTALL_EXT_VERSION:
+            name: "install-php-extensions 版本"
+            description: "install-php-extensions 版本"
+            default: "2.8.5"
+            required: true  
   - buttons: 
     - name: "编译 Node.js 镜像"
       event: web_trigger_build_node_image
