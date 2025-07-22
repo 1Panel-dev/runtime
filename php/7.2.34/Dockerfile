@@ -3,7 +3,7 @@
 #
 # PLEASE DO NOT EDIT IT DIRECTLY.
 #
-FROM php:7.2.33-fpm AS php-source
+FROM php:7.2.34-fpm AS php-source
 
 FROM debian:bookworm-slim
 ARG INSTALL_EXT_VERSION
@@ -71,7 +71,6 @@ ENV PHP_LDFLAGS="-Wl,-O1 -pie"
 #ENV PHP_SHA256="0f160a3483ffce36be5962fab7bcf09d605ee66c5707df83e4195cb796bbb03a" PHP_MD5=""
 
 
-
 RUN set -eux; \
 	\
 	savedAptMark="$(apt-mark showmanual)"; \
@@ -85,7 +84,7 @@ RUN set -eux; \
 	apt-get purge -y --auto-remove -o APT::AutoRemove::RecommendsImportant=false
 
 #COPY docker-php-source /usr/local/bin/
-COPY ./data/php-7.2.33.tar.xz /usr/src/php.tar.xz
+COPY ./data/php-7.2.34.tar.xz /usr/src/php.tar.xz
 COPY --from=php-source /usr/local/bin/docker-php-source /usr/local/bin/
 
 

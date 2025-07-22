@@ -9,7 +9,7 @@ branch:
           PHP_VERSION:
             name: "PHP 版本"
             description: "PHP 版本"
-            default: "7.2.33"
+            default: "7.2.34"
             required: true
           INSTALL_EXT_VERSION:
             name: "install-php-extensions 版本"

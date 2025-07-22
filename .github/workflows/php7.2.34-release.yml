@@ -1,11 +1,11 @@
-name: Build PHP 7.2.33 Image
+name: Build PHP 7.2.34 Image
 
 on:
   workflow_dispatch:
     inputs:
       php_version:
         description: 'PHP 7.2 Version'
-        default: '7.2.33'
+        default: '7.2.34'
         required: true
       install_ext_version:
         description: 'install-php-extensions version'
@@ -34,8 +34,8 @@ jobs:
       - name: Build PHP-7.2 and Push
         uses: docker/build-push-action@v5
         with:
-          context: php/7.2.33
-          file: php/7.2.33/Dockerfile
+          context: php/7.2.34
+          file: php/7.2.34/Dockerfile
           platforms: linux/amd64,linux/arm/v7,linux/arm64/v8
           push: true
           build-args:
