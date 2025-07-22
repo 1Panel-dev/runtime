@@ -64,11 +64,11 @@ ENV PHP_CFLAGS="-fstack-protector-strong -fpic -fpie -O2 -D_LARGEFILE_SOURCE -D_
 ENV PHP_CPPFLAGS="$PHP_CFLAGS"
 ENV PHP_LDFLAGS="-Wl,-O1 -pie"
 
-ENV GPG_KEYS 1729F83938DA44E27BA0F4D3DBDB397470D12172 B1B44D8F021E4E2D6021E995DC9FF8D3EE5AF27F
+#ENV GPG_KEYS 1729F83938DA44E27BA0F4D3DBDB397470D12172 B1B44D8F021E4E2D6021E995DC9FF8D3EE5AF27F
 
-ENV PHP_VERSION 7.2.33
-ENV PHP_URL="https://www.php.net/distributions/php-7.2.33.tar.xz" PHP_ASC_URL="https://www.php.net/distributions/php-7.2.33.tar.xz.asc"
-ENV PHP_SHA256="0f160a3483ffce36be5962fab7bcf09d605ee66c5707df83e4195cb796bbb03a" PHP_MD5=""
+#ENV PHP_VERSION 7.2.33
+#ENV PHP_URL="https://www.php.net/distributions/php-7.2.33.tar.xz" PHP_ASC_URL="https://www.php.net/distributions/php-7.2.33.tar.xz.asc"
+#ENV PHP_SHA256="0f160a3483ffce36be5962fab7bcf09d605ee66c5707df83e4195cb796bbb03a" PHP_MD5=""
 
 
 
@@ -80,28 +80,6 @@ RUN set -eux; \
 	rm -rf /var/lib/apt/lists/*; \
 	\
 	mkdir -p /usr/src; \
-#	cd /usr/src; \
-#	\
-#	curl -fsSL -o php.tar.xz "$PHP_URL"; \
-#	\
-#	if [ -n "$PHP_SHA256" ]; then \
-#		echo "$PHP_SHA256 *php.tar.xz" | sha256sum -c -; \
-#	fi; \
-#	if [ -n "$PHP_MD5" ]; then \
-#		echo "$PHP_MD5 *php.tar.xz" | md5sum -c -; \
-#	fi; \
-#	\
-#	if [ -n "$PHP_ASC_URL" ]; then \
-#		curl -fsSL -o php.tar.xz.asc "$PHP_ASC_URL"; \
-#		export GNUPGHOME="$(mktemp -d)"; \
-#		for key in $GPG_KEYS; do \
-#			gpg --batch --keyserver ha.pool.sks-keyservers.net --recv-keys "$key"; \
-#		done; \
-#		gpg --batch --verify php.tar.xz.asc php.tar.xz; \
-#		gpgconf --kill all; \
-#		rm -rf "$GNUPGHOME"; \
-#	fi; \
-#	\
 	apt-mark auto '.*' > /dev/null; \
 	apt-mark manual $savedAptMark > /dev/null; \
 	apt-get purge -y --auto-remove -o APT::AutoRemove::RecommendsImportant=false
