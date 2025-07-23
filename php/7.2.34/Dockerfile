@@ -6,7 +6,6 @@
 FROM php:7.2.34-fpm AS php-source
 
 FROM debian:bullseye-slim
-ARG INSTALL_EXT_VERSION
 
 # prevent Debian's PHP packages from being installed
 # https://github.com/docker-library/php/pull/542
@@ -248,21 +247,18 @@ COPY ./data/supervisord.conf /etc/supervisord.conf
 RUN apt-get update && \
     apt-get install -y python3 python3-pip git wget&& \
     rm -rf /var/lib/apt/lists/* && \
-    curl -fsSL -o /usr/local/bin/install-php-extensions \
-    https://github.com/mlocati/docker-php-extension-installer/releases/download/${INSTALL_EXT_VERSION}/install-php-extensions && \
-    chmod uga+x /usr/local/bin/install-php-extensions    
-    
-RUN cd /tmp && \
+    curl -fsSL -o /usr/local/bin/install-php-extensions https://github.com/mlocati/docker-php-extension-installer/releases/latest/download/install-php-extensions && \
+    chmod uga+x /usr/local/bin/install-php-extensions && \
+    cd /tmp && \
     tar -xzvf supervisor-4.2.5.tar.gz && \
     cd supervisor-4.2.5 && \
     python3 setup.py install && \
-    mkdir -p /var/log/supervisor /etc/supervisor/conf.d  
-
-RUN curl -o /tmp/composer-setup.php https://getcomposer.org/installer \
-    && php /tmp/composer-setup.php --install-dir=/tmp \
-    && mv /tmp/composer.phar /usr/bin/composer \
-    && chmod +x /usr/bin/composer \
-    && rm -rf /tmp/composer-setup.php
+    mkdir -p /var/log/supervisor /etc/supervisor/conf.d  && \
+    curl -o /tmp/composer-setup.php https://getcomposer.org/installer &&\
+    php /tmp/composer-setup.php --install-dir=/tmp && \
+    mv /tmp/composer.phar /usr/bin/composer && \
+    chmod +x /usr/bin/composer &&\
+    rm -rf /tmp/composer-setup.php
     
 ENV COMPOSER_HOME=/tmp/.composer
 
