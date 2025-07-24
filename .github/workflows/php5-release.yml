@@ -30,12 +30,10 @@ jobs:
       - name: Build PHP-5.6 and Push
         uses: docker/build-push-action@v5
         with:
-          context: php/5.6
-          file: php/5.6/Dockerfile
+          context: php/5.6.40
+          file: php/5.6.40/Dockerfile
           platforms: linux/amd64,linux/arm/v7,linux/arm64/v8
           push: true
-          build-args:
-            PHP_VERSION=${{ github.event.inputs.php56Version }}
           tags: |
             1panel/php:${{ github.event.inputs.php56Version }}-fpm
           cache-from: type=gha
