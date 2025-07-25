@@ -3,7 +3,6 @@
 #
 # PLEASE DO NOT EDIT IT DIRECTLY.
 #
-FROM php:5.6.40-fpm AS php-source
 FROM debian:bullseye-slim
 
 RUN sed -i 's|http://deb.debian.org|http://mirrors.tuna.tsinghua.edu.cn|g' /etc/apt/sources.list && \
@@ -82,32 +81,30 @@ RUN set -xe; \
 	mkdir -p /usr/src; \
 	apt-get purge -y --auto-remove -o APT::AutoRemove::RecommendsImportant=false $fetchDeps
 
-#COPY docker-php-source /usr/local/bin/
 COPY ./data/php-5.6.40.tar.xz /usr/src/php.tar.xz
-COPY --from=php-source /usr/local/bin/docker-php-source /usr/local/bin/
-
+COPY ./data/curl-8.4.0.tar.gz /tmp/curl-8.4.0.tar.gz
+COPY ./data/openssl-1.0.2u.tar.gz /tmp/openssl-1.0.2u.tar.gz
+COPY ./data/docker-php-source /usr/local/bin/
+COPY ./data/docker-php-ext-* /usr/local/bin/
+COPY ./data/docker-php-entrypoint /usr/local/bin/
 
 ENV OPENSSL_PREFIX=/usr/local/openssl
 ENV CURL_PREFIX=/usr/local/curl
 ENV LD_LIBRARY_PATH=/usr/local/openssl/lib:$LD_LIBRARY_PATH
 
 RUN cd /tmp && \
-    curl -L -o  openssl-1.0.2u.tar.gz  https://www.openssl.org/source/openssl-1.0.2u.tar.gz && \
     tar -xzf openssl-1.0.2u.tar.gz && \
     cd openssl-1.0.2u && \
     ./config --prefix=$OPENSSL_PREFIX --openssldir=$OPENSSL_PREFIX shared zlib && \
     make && \
     make install && \
     cd / && \
-    rm -rf /tmp/openssl-1.0.2u*
-
-RUN echo '/usr/local/ssl/lib' > /etc/ld.so.conf.d/openssl.conf && \
+    rm -rf /tmp/openssl-1.0.2u* &&\
+    echo '/usr/local/ssl/lib' > /etc/ld.so.conf.d/openssl.conf && \
     ldconfig  /usr/local/openssl/lib
-
 
 RUN set -eux; \
 	cd /tmp; \
-	curl  -L -o /tmp/curl-8.4.0.tar.gz https://curl.se/download/curl-8.4.0.tar.gz; \
 	tar -xzf curl-8.4.0.tar.gz; \
 	cd curl-8.4.0; \
 	./configure \
@@ -194,11 +191,6 @@ RUN set -eux; \
 # https://github.com/docker-library/php/issues/443
 	pecl update-channels; \
 	rm -rf /tmp/pear ~/.pearrc
-
-
-COPY --from=php-source /usr/local/bin/docker-php-ext-* /usr/local/bin/
-COPY --from=php-source /usr/local/bin/docker-php-entrypoint /usr/local/bin/
-
 
 RUN set -ex \
 	&& cd /usr/local/etc \
