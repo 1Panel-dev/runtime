@@ -86,6 +86,7 @@ COPY ./data/curl-8.4.0.tar.gz /tmp/curl-8.4.0.tar.gz
 COPY ./data/openssl-1.0.2u.tar.gz /tmp/openssl-1.0.2u.tar.gz
 COPY ./data/docker-php-source /usr/local/bin/
 COPY ./data/docker-php-ext-* /usr/local/bin/
+RUN chmod +x /usr/local/bin/docker-php-source /usr/local/bin/docker-php-ext-*
 
 ENV OPENSSL_PREFIX=/usr/local/openssl
 ENV CURL_PREFIX=/usr/local/curl
