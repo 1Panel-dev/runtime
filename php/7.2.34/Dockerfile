@@ -244,6 +244,8 @@ COPY ./data/supervisor-4.2.5.tar.gz /tmp/
 COPY ./data/php-fpm.ini /etc/supervisor.d/php-fpm.ini
 COPY ./data/supervisord.conf /etc/supervisord.conf
 
+ENV COMPOSER_HOME=/tmp/.composer
+
 RUN apt-get update && \
     apt-get install -y python3 python3-pip git wget&& \
     rm -rf /var/lib/apt/lists/* && \
@@ -258,11 +260,9 @@ RUN apt-get update && \
     php /tmp/composer-setup.php --install-dir=/tmp && \
     mv /tmp/composer.phar /usr/bin/composer && \
     chmod +x /usr/bin/composer &&\
-    rm -rf /tmp/composer-setup.php
-    
-ENV COMPOSER_HOME=/tmp/.composer
-
-RUN usermod -u 1000 www-data && groupmod -g 1000 www-data
+    rm -rf /tmp/composer-setup.php &&\
+    usermod -u 1000 www-data && groupmod -g 1000 www-data &&\
+    mkdir -p ${COMPOSER_HOME} && chown -R www-data:www-data ${COMPOSER_HOME}
 
 ENTRYPOINT ["supervisord", "--nodaemon", "--configuration", "/etc/supervisord.conf"]
 
