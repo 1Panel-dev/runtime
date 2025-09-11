@@ -228,11 +228,11 @@ RUN set -eux; \
 COPY ./data/supervisor-4.2.5.tar.gz /tmp/
 COPY ./data/php-fpm.ini /etc/supervisor.d/php-fpm.ini
 COPY ./data/supervisord.conf /etc/supervisord.conf
+COPY ./data/install-php-extensions  /usr/local/bin/
 
 RUN apt-get update && \
     apt-get install -y python3 python3-pip git wget&& \
     rm -rf /var/lib/apt/lists/* && \
-    curl -fsSL -o /usr/local/bin/install-php-extensions https://github.com/mlocati/docker-php-extension-installer/releases/latest/download/install-php-extensions && \
     chmod uga+x /usr/local/bin/install-php-extensions && \
     cd /tmp && \
     tar -xzvf supervisor-4.2.5.tar.gz && \

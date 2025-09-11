@@ -5,7 +5,6 @@ COPY ./data/supervisor-4.2.5.tar.gz /tmp/
 COPY ./data/php-fpm.ini /etc/supervisor.d/php-fpm.ini
 COPY ./data/supervisord.conf /etc/supervisord.conf
 COPY ./data/install-php-extensions  /usr/local/bin/
-COPY ./data/composer /usr/bin/composer
  
 RUN apt-get update && \
     apt-get install -y python3 python3-pip git wget&& \

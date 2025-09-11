@@ -21,15 +21,7 @@ if ! which docker-php-ext-configure >/dev/null || ! which docker-php-ext-enable 
 	exit 1
 fi
 
-IPE_VERSION=2.7.35
-
-StandWithUkraine() {
-	if test -t 1 && ! grep -Eq '^VERSION=.*jessie' /etc/os-release; then
-		printf '\e[37;44m#StandWith\e[30;43mUkraine\e[0m\n'
-	else
-		printf '#StandWithUkraine\n'
-	fi
-}
+IPE_VERSION=2.9.7
 
 if test "$IPE_VERSION" = master && test "${CI:-}" != true; then
 	cat <<EOF
@@ -53,11 +45,9 @@ if test "$IPE_VERSION" = master && test "${CI:-}" != true; then
 #############################################################################################################
 
 EOF
-	StandWithUkraine
 	sleep 10 || true
 else
 	printf 'install-php-extensions v.%s\n' "$IPE_VERSION"
-	StandWithUkraine
 fi
 
 # Reset the Internal Field Separator
@@ -69,7 +59,7 @@ resetIFS() {
 # Set these variables:
 # - DISTRO containing the distribution name (eg 'alpine', 'debian')
 # - DISTRO_VERSION_NUMBER containing the distribution version (eg '3.14' for Alpine, 11 for Debian)
-# - DISTRO_VERSION containing the distribution name and its version(eg 'alpine@3.14', 'debian@11')
+# - DISTRO_VERSION containing the distribution name and its version (eg 'alpine@3.14', 'debian@11')
 # - DISTRO_MAJMIN_VERSION always containing a number representing the distribution version (eg 314 for Alpine, 1100 for Debian)
 setDistro() {
 	if ! test -r /etc/os-release; then
@@ -150,6 +140,9 @@ normalizePHPModuleName() {
 			if test $PHP_MAJMIN_VERSION -ge 700; then
 				normalizePHPModuleName_name='sodium'
 			fi
+			;;
+		saxonc)
+			normalizePHPModuleName_name=saxon
 			;;
 		sodium)
 			if test $PHP_MAJMIN_VERSION -lt 700; then
@@ -265,6 +258,9 @@ EOT
 # Set these variables:
 # - PROCESSED_PHP_MODULE_ARGUMENT
 #
+# Update these variables:
+# - FORCED_REMOTE_MODULES
+#
 # Optionally set these variables:
 # - PHP_WANTEDMODULEVERSION_<...> (where <...> is the normalized module name)
 # - PHP_MODULESOURCECODEPATH_<...> (where <...> is the normalized module name)
@@ -319,6 +315,7 @@ processPHPModuleArgument() {
 		PROCESSED_PHP_MODULE_ARGUMENT="$(normalizePHPModuleName "$PROCESSED_PHP_MODULE_ARGUMENT")"
 	fi
 	if test -n "$processPHPModuleArgument_version"; then
+		FORCED_REMOTE_MODULES="${FORCED_REMOTE_MODULES:+$FORCED_REMOTE_MODULES }$PROCESSED_PHP_MODULE_ARGUMENT"
 		if printf '%s' "$PROCESSED_PHP_MODULE_ARGUMENT" | grep -Eq '^[a-zA-Z0-9_]+$'; then
 			eval PHP_WANTEDMODULEVERSION_$PROCESSED_PHP_MODULE_ARGUMENT="$processPHPModuleArgument_version"
 		elif printf '%s' "$PROCESSED_PHP_MODULE_ARGUMENT" | grep -Eq '^@[a-zA-Z0-9_]+$'; then
@@ -497,12 +494,14 @@ setPHPPreinstalledModules() {
 #
 # Set:
 #   PHP_MODULES_TO_INSTALL
+#   FORCED_REMOTE_MODULES
 #
 # Output:
 #   Nothing
 processCommandArguments() {
 	processCommandArguments_endArgs=0
 	PHP_MODULES_TO_INSTALL=''
+	FORCED_REMOTE_MODULES=''
 	# Support deprecated flag IPE_FIX_CACERTS
 	case "${IPE_FIX_CACERTS:-}" in
 		1 | y* | Y*)
@@ -999,7 +998,11 @@ buildRequiredPackageLists() {
 				fi
 				;;
 			imagick@debian)
-				buildRequiredPackageLists_persistent="$buildRequiredPackageLists_persistent ^libmagickwand-6.q16-[0-9]+$ ^libmagickcore-6.q16-[0-9]+-extra$"
+				if test $DISTRO_VERSION_NUMBER -ge 13; then
+					buildRequiredPackageLists_persistent="$buildRequiredPackageLists_persistent ^libmagickwand-7.q16-[0-9]+$ ^libmagickcore-7.q16-[0-9]+-extra$"
+				else
+					buildRequiredPackageLists_persistent="$buildRequiredPackageLists_persistent ^libmagickwand-6.q16-[0-9]+$ ^libmagickcore-6.q16-[0-9]+-extra$"
+				fi
 				buildRequiredPackageLists_volatile="$buildRequiredPackageLists_volatile libmagickwand-dev"
 				;;
 			imap@alpine)
@@ -1007,16 +1010,22 @@ buildRequiredPackageLists() {
 				buildRequiredPackageLists_volatile="$buildRequiredPackageLists_volatile krb5-dev imap-dev $buildRequiredPackageLists_libssldev"
 				;;
 			imap@debian)
-				buildRequiredPackageLists_persistent="$buildRequiredPackageLists_persistent libc-client2007e"
 				buildRequiredPackageLists_volatile="$buildRequiredPackageLists_volatile libkrb5-dev"
-				case "$DISTRO_VERSION" in
-					debian@9)
+				if test $DISTRO_VERSION_NUMBER -ge 13; then
+					# Since Debian 13 (trixie) libc-client2007e is no more available
+					buildRequiredPackageLists_persistent="$buildRequiredPackageLists_persistent sgml-base"
+					if ! isLibcClient2007eInstalled; then
+						COMPILE_LIBS="$COMPILE_LIBS libc-client2007e"
+						buildRequiredPackageLists_volatile="$buildRequiredPackageLists_volatile libpam0g-dev $buildRequiredPackageLists_libssldev"
+					fi
+				else
+					buildRequiredPackageLists_persistent="$buildRequiredPackageLists_persistent libc-client2007e"
+					if test $DISTRO_VERSION_NUMBER -eq 9; then
 						buildRequiredPackageLists_volatile="$buildRequiredPackageLists_volatile $buildRequiredPackageLists_libssldev comerr-dev krb5-multidev libc-client2007e libgssrpc4 libkadm5clnt-mit11 libkadm5srv-mit11 libkdb5-8 libpam0g-dev libssl-doc mlock"
-						;;
-					*)
+					else
 						buildRequiredPackageLists_volatile="$buildRequiredPackageLists_volatile libc-client-dev"
-						;;
-				esac
+					fi
+				fi
 				;;
 			interbase@alpine)
 				buildRequiredPackageLists_volatile="$buildRequiredPackageLists_volatile icu-dev ncurses-dev"
@@ -1031,6 +1040,9 @@ buildRequiredPackageLists() {
 			intl@alpine)
 				buildRequiredPackageLists_persistent="$buildRequiredPackageLists_persistent icu-libs $buildRequiredPackageLists_icuPersistent"
 				buildRequiredPackageLists_volatile="$buildRequiredPackageLists_volatile icu-dev"
+				if test $DISTRO_MAJMIN_VERSION -ge 322 && test $PHP_MAJMIN_VERSION -eq 801; then
+					buildRequiredPackageLists_volatile="$buildRequiredPackageLists_volatile patch"
+				fi
 				;;
 			intl@debian)
 				buildRequiredPackageLists_persistent="$buildRequiredPackageLists_persistent ^libicu[0-9]+$"
@@ -1041,6 +1053,18 @@ buildRequiredPackageLists() {
 				;;
 			ion@debian)
 				buildRequiredPackageLists_volatile="$buildRequiredPackageLists_volatile cmake git"
+				;;
+			ip2location@alpine)
+				if ! isLibIP2LocationInstalled; then
+					buildRequiredPackageLists_volatile="$buildRequiredPackageLists_volatile automake libtool"
+					COMPILE_LIBS="$COMPILE_LIBS libip2location"
+				fi
+				;;
+			ip2location@debian)
+				if ! isLibIP2LocationInstalled; then
+					buildRequiredPackageLists_volatile="$buildRequiredPackageLists_volatile automake libtool"
+					COMPILE_LIBS="$COMPILE_LIBS libip2location"
+				fi
 				;;
 			ldap@alpine)
 				buildRequiredPackageLists_persistent="$buildRequiredPackageLists_persistent libldap"
@@ -1148,6 +1172,14 @@ buildRequiredPackageLists() {
 				buildRequiredPackageLists_persistent="$buildRequiredPackageLists_persistent libsybdb5"
 				buildRequiredPackageLists_volatile="$buildRequiredPackageLists_volatile freetds-dev"
 				;;
+			nsq@alpine)
+				buildRequiredPackageLists_persistent="$buildRequiredPackageLists_persistent libevent $buildRequiredPackageLists_libssl"
+				buildRequiredPackageLists_volatile="$buildRequiredPackageLists_volatile libevent-dev $buildRequiredPackageLists_libssldev"
+				;;
+			nsq@debian)
+				buildRequiredPackageLists_persistent="$buildRequiredPackageLists_persistent ^libevent[0-9\.\-]*$"
+				buildRequiredPackageLists_volatile="$buildRequiredPackageLists_volatile libevent-dev $buildRequiredPackageLists_libssldev"
+				;;
 			oauth@alpine)
 				if test $PHP_MAJMIN_VERSION -ge 700; then
 					buildRequiredPackageLists_volatile="$buildRequiredPackageLists_volatile pcre-dev"
@@ -1155,7 +1187,11 @@ buildRequiredPackageLists() {
 				;;
 			oauth@debian)
 				if test $PHP_MAJMIN_VERSION -ge 700; then
-					buildRequiredPackageLists_volatile="$buildRequiredPackageLists_volatile libpcre3-dev"
+					if test $DISTRO_VERSION_NUMBER -ge 13; then
+						buildRequiredPackageLists_volatile="$buildRequiredPackageLists_volatile libpcre2-dev"
+					else
+						buildRequiredPackageLists_volatile="$buildRequiredPackageLists_volatile libpcre3-dev"
+					fi
 				fi
 				;;
 			oci8@alpine | pdo_oci@alpine)
@@ -1166,7 +1202,11 @@ buildRequiredPackageLists() {
 				fi
 				;;
 			oci8@debian | pdo_oci@debian)
-				buildRequiredPackageLists_persistent="$buildRequiredPackageLists_persistent ^libaio[0-9]*$"
+				if test $DISTRO_VERSION_NUMBER -ge 13; then
+					buildRequiredPackageLists_persistent="$buildRequiredPackageLists_persistent libaio1t64"
+				else
+					buildRequiredPackageLists_persistent="$buildRequiredPackageLists_persistent ^libaio[0-9]*$"
+				fi
 				buildRequiredPackageLists_volatile="$buildRequiredPackageLists_volatile unzip"
 				;;
 			odbc@alpine | pdo_odbc@alpine)
@@ -1174,7 +1214,11 @@ buildRequiredPackageLists() {
 				buildRequiredPackageLists_volatile="$buildRequiredPackageLists_volatile unixodbc-dev"
 				;;
 			odbc@debian | pdo_odbc@debian)
-				buildRequiredPackageLists_persistent="$buildRequiredPackageLists_persistent libodbc1"
+				if test $DISTRO_VERSION_NUMBER -ge 13; then
+					buildRequiredPackageLists_persistent="$buildRequiredPackageLists_persistent libodbc2"
+				else
+					buildRequiredPackageLists_persistent="$buildRequiredPackageLists_persistent libodbc1"
+				fi
 				buildRequiredPackageLists_volatile="$buildRequiredPackageLists_volatile unixodbc-dev"
 				;;
 			openswoole@alpine)
@@ -1233,7 +1277,9 @@ buildRequiredPackageLists() {
 				buildRequiredPackageLists_volatile="$buildRequiredPackageLists_volatile python3-dev"
 				;;
 			phpy@debian)
-				if test $DISTRO_VERSION_NUMBER -ge 12; then
+				if test $DISTRO_VERSION_NUMBER -ge 13; then
+					buildRequiredPackageLists_persistent="$buildRequiredPackageLists_persistent libpython3.13"
+				elif test $DISTRO_VERSION_NUMBER -ge 12; then
 					buildRequiredPackageLists_persistent="$buildRequiredPackageLists_persistent libpython3.11"
 				elif test $DISTRO_VERSION_NUMBER -ge 11; then
 					buildRequiredPackageLists_persistent="$buildRequiredPackageLists_persistent libpython3.9"
@@ -1315,6 +1361,9 @@ buildRequiredPackageLists() {
 					buildRequiredPackageLists_persistent="$buildRequiredPackageLists_persistent $buildRequiredPackageLists_libssl"
 				fi
 				;;
+			saxon@alpine)
+				buildRequiredPackageLists_persistent="$buildRequiredPackageLists_persistent libstdc++"
+				;;
 			saxon@debian)
 				buildRequiredPackageLists_persistent="$buildRequiredPackageLists_volatile unzip"
 				;;
@@ -1353,7 +1402,11 @@ buildRequiredPackageLists() {
 				buildRequiredPackageLists_volatile="$buildRequiredPackageLists_volatile pcre-dev"
 				;;
 			snuffleupagus@debian)
-				buildRequiredPackageLists_volatile="$buildRequiredPackageLists_volatile libpcre3-dev"
+				if test $DISTRO_VERSION_NUMBER -ge 13; then
+					buildRequiredPackageLists_volatile="$buildRequiredPackageLists_volatile libpcre2-dev"
+				else
+					buildRequiredPackageLists_volatile="$buildRequiredPackageLists_volatile libpcre3-dev"
+				fi
 				;;
 			soap@alpine)
 				buildRequiredPackageLists_volatile="$buildRequiredPackageLists_volatile libxml2-dev"
@@ -1508,9 +1561,12 @@ buildRequiredPackageLists() {
 				elif test $DISTRO_VERSION_NUMBER -le 11; then
 					buildRequiredPackageLists_persistent="$buildRequiredPackageLists_persistent gfortran-10 libopenblas-base"
 					buildRequiredPackageLists_volatile="$buildRequiredPackageLists_volatile libgfortran-10-dev"
-				else
+				elif test $DISTRO_VERSION_NUMBER -le 12; then
 					buildRequiredPackageLists_persistent="$buildRequiredPackageLists_persistent gfortran-12 libopenblas0"
 					buildRequiredPackageLists_volatile="$buildRequiredPackageLists_volatile libgfortran-12-dev"
+				else
+					buildRequiredPackageLists_persistent="$buildRequiredPackageLists_persistent libgfortran5 libopenblas0"
+					buildRequiredPackageLists_volatile="$buildRequiredPackageLists_volatile libgfortran-14-dev"
 				fi
 				;;
 			tidy@alpine)
@@ -2487,6 +2543,71 @@ installLibenchant1() {
 	cd - >/dev/null
 }
 
+isLibcClient2007eInstalled() {
+	if test -f /usr/lib/libc-client.so.2007e && test -f /usr/include/c-client/utf8.h; then
+		return 0
+	fi
+	return 1
+}
+
+isLibIP2LocationInstalled() {
+	if test -f /usr/local/lib/libIP2Location.so && test -f /usr/local/include/IP2Location.h; then
+		return 0
+	fi
+	return 1
+}
+
+installLibIP2Location() {
+	printf 'Installing libIP2Location\n'
+	installLibIP2Location_src="$(getPackageSource https://codeload.github.com/chrislim2888/IP2Location-C-Library/tar.gz/8.7.0)"
+	cd -- "$installLibIP2Location_src"
+	autoreconf -fiv
+	./configure
+	make -j$(getProcessorCount)
+	make install
+	cd - >/dev/null
+	ldconfig || true
+}
+
+installLibcClient2007e() {
+	mkdir -p /tmp/src
+	installLibcClient2007e_arch="$(dpkg --print-architecture)"
+	# See:
+	# - https://packages.debian.org/bookworm/mlock
+	# - https://packages.debian.org/bookworm/libc-client2007e
+	# - https://packages.debian.org/bookworm/libc-client2007e-dev
+	case "$installLibcClient2007e_arch" in
+		amd64)
+			installLibcClient2007e_version='2007f~dfsg-7+b2'
+			;;
+		*)
+			installLibcClient2007e_version='2007f~dfsg-7+b1'
+			;;
+	esac
+	if ! test -f /usr/bin/mlock; then
+		installLibcClient2007e_url="http://ftp.debian.org/debian/pool/main/u/uw-imap/mlock_${installLibcClient2007e_version}_${installLibcClient2007e_arch}.deb"
+		installLibcClient2007e_deb="$(mktemp -p /tmp/src)"
+		printf '# Installing mlock from %s\n' "$installLibcClient2007e_url"
+		curl -sSLf -o "$installLibcClient2007e_deb" "$installLibcClient2007e_url"
+		dpkg -i "$installLibcClient2007e_deb"
+	fi
+	if ! test -f /usr/lib/libc-client.so.2007e; then
+		installLibcClient2007e_url="http://ftp.debian.org/debian/pool/main/u/uw-imap/libc-client2007e_${installLibcClient2007e_version}_${installLibcClient2007e_arch}.deb"
+		installLibcClient2007e_deb="$(mktemp -p /tmp/src)"
+		printf '# Installing libc-client2007e from %s\n' "$installLibcClient2007e_url"
+		curl -sSLf -o "$installLibcClient2007e_deb" "$installLibcClient2007e_url"
+		dpkg -i "$installLibcClient2007e_deb"
+	fi
+	if ! test -f /usr/include/c-client/utf8.h; then
+		installLibcClient2007e_url="http://ftp.debian.org/debian/pool/main/u/uw-imap/libc-client2007e-dev_${installLibcClient2007e_version}_${installLibcClient2007e_arch}.deb"
+		installLibcClient2007e_deb="$(mktemp -p /tmp/src)"
+		printf '# Installing libc-client2007e-dev from %s\n' "$installLibcClient2007e_url"
+		curl -sSLf -o "$installLibcClient2007e_deb" "$installLibcClient2007e_url"
+		dpkg -i "$installLibcClient2007e_deb"
+		PACKAGES_VOLATILE="$PACKAGES_VOLATILE libc-client2007e-dev"
+	fi
+}
+
 # Install Composer
 installComposer() {
 	installComposer_version="$(getWantedPHPModuleVersion @composer)"
@@ -2662,13 +2783,23 @@ installCargo() {
 	fi
 }
 
+# Install New Relic
+#
+# Arguments:
+#   $1: the version to be installed (optional)
 installNewRelic() {
 	printf '# Installing newrelic\n'
-	# see https://docs.newrelic.com/docs/apm/agents/php-agent/getting-started/php-agent-compatibility-requirements/
-	if test $PHP_MAJMIN_VERSION -le 701; then
-		installNewRelic_baseUrl=https://download.newrelic.com/php_agent/archive/10.21.0.11/
-	else
+	installNewRelic_version="${1:-}"
+	if test -z "$installNewRelic_version"; then
+		# see https://docs.newrelic.com/docs/apm/agents/php-agent/getting-started/php-agent-compatibility-requirements/
+		if test $PHP_MAJMIN_VERSION -le 701; then
+			installNewRelic_version=10.21.0.11
+		fi
+	fi
+	if test -z "$installNewRelic_version"; then
 		installNewRelic_baseUrl=https://download.newrelic.com/php_agent/release/
+	else
+		installNewRelic_baseUrl="https://download.newrelic.com/php_agent/archive/$installNewRelic_version/"
 	fi
 	installNewRelic_search='\bnewrelic-php[0-9.]*-[0-9]+(\.[0-9]+)*-linux'
 	case "$DISTRO" in
@@ -2733,6 +2864,12 @@ compileLibs() {
 	fi
 	if stringInList libenchant1 "$COMPILE_LIBS"; then
 		installLibenchant1
+	fi
+	if stringInList libc-client2007e "$COMPILE_LIBS"; then
+		installLibcClient2007e
+	fi
+	if stringInList libip2location "$COMPILE_LIBS"; then
+		installLibIP2Location
 	fi
 }
 
@@ -2847,6 +2984,37 @@ EOF
 					;;
 			esac
 			;;
+		intl)
+			case "$DISTRO" in
+				alpine)
+					if test $DISTRO_MAJMIN_VERSION -ge 322 && test $PHP_MAJMIN_VERSION -eq 801; then
+						# See https://github.com/php/php-src/commit/3fdd3ed9f722d9f0aa3122b2340a611db2dfa110
+						docker-php-source extract
+						patch /usr/src/php/ext/intl/config.m4 <<'EOF'
+@@ -85,7 +85,16 @@ if test "$PHP_INTL" != "no"; then
+     breakiterator/codepointiterator_methods.cpp"
+ 
+   PHP_REQUIRE_CXX()
+-  PHP_CXX_COMPILE_STDCXX(11, mandatory, PHP_INTL_STDCXX)
++
++  AC_MSG_CHECKING([if intl requires -std=gnu++17])
++  AS_IF([$PKG_CONFIG icu-uc --atleast-version=74],[
++    AC_MSG_RESULT([yes])
++    PHP_CXX_COMPILE_STDCXX(17, mandatory, PHP_INTL_STDCXX)
++  ],[
++    AC_MSG_RESULT([no])
++    PHP_CXX_COMPILE_STDCXX(11, mandatory, PHP_INTL_STDCXX)
++  ])
++
+   PHP_INTL_CXX_FLAGS="$INTL_COMMON_FLAGS $PHP_INTL_STDCXX $ICU_CXXFLAGS"
+   case $host_alias in
+   *cygwin*) PHP_INTL_CXX_FLAGS="$PHP_INTL_CXX_FLAGS -D_POSIX_C_SOURCE=200809L"
+EOF
+
+					fi
+					;;
+			esac
+			;;
 		ldap)
 			case "$DISTRO" in
 				debian)
@@ -2869,6 +3037,18 @@ EOF
 			cd - >/dev/null
 			;;
 		oci8 | pdo_oci)
+			case "$DISTRO" in
+				debian)
+					if test $DISTRO_VERSION_NUMBER -ge 13; then
+						if test -f /usr/lib/$TARGET_TRIPLET/libaio.so.1t64 && ! test -f /usr/lib/$TARGET_TRIPLET/libaio.so.1; then
+							ln -s /usr/lib/$TARGET_TRIPLET/libaio.so.1t64 /usr/lib/$TARGET_TRIPLET/libaio.so.1
+						fi
+						if test -f /usr/lib/$TARGET_TRIPLET/libaio.so.1 && ! test -f /usr/lib/$TARGET_TRIPLET/libaio.so; then
+							ln -s /usr/lib/$TARGET_TRIPLET/libaio.so.1 /usr/lib/$TARGET_TRIPLET/libaio.so
+						fi
+					fi
+					;;
+			esac
 			installOracleInstantClient
 			if test "$1" = oci8; then
 				docker-php-ext-configure "$1" "--with-oci8=instantclient,$ORACLE_INSTANTCLIENT_LIBPATH"
@@ -3227,6 +3407,19 @@ installRemoteModule() {
 			# event must be loaded after sockets
 			installRemoteModule_ini_basename="xx-php-ext-$installRemoteModule_module"
 			;;
+		excimer)
+			if test -z "$installRemoteModule_version"; then
+				case "$DISTRO" in
+					alpine)
+						if test $DISTRO_MAJMIN_VERSION -le 313; then
+							# With newer versions we have:
+							# configure: error: excimer requires timer_create or kevent
+							installRemoteModule_version=1.2.3
+						fi
+						;;
+				esac
+			fi
+			;;
 		gearman)
 			if test -z "$installRemoteModule_version"; then
 				if test $PHP_MAJMIN_VERSION -le 506; then
@@ -3238,7 +3431,7 @@ installRemoteModule() {
 			case "$DISTRO" in
 				alpine)
 					if ! test -e /usr/local/include/libgearman/gearman.h || ! test -e /usr/local/lib/libgearman.so; then
-						installRemoteModule_src="$(getPackageSource https://github.com/gearman/gearmand/releases/download/1.1.21/gearmand-1.1.21.tar.gz)"
+						installRemoteModule_src="$(getPackageSource https://github.com/gearman/gearmand/releases/download/1.1.22/gearmand-1.1.22.tar.gz)"
 						cd -- "$installRemoteModule_src"
 						./configure
 						make -j$(getProcessorCount) install-binPROGRAMS
@@ -3271,6 +3464,8 @@ installRemoteModule() {
 			if test -z "$installRemoteModule_version"; then
 				if test $PHP_MAJMIN_VERSION -le 506; then
 					installRemoteModule_version=0.2.1
+				elif test $PHP_MAJMIN_VERSION -le 704; then
+					installRemoteModule_version=0.3.2
 				else
 					installRemoteModule_version=beta
 				fi
@@ -3560,7 +3755,7 @@ installRemoteModule() {
 			fi
 			;;
 		newrelic)
-			installNewRelic
+			installNewRelic "$installRemoteModule_version"
 			installRemoteModule_manuallyInstalled=2
 			;;
 		oauth)
@@ -3571,6 +3766,18 @@ installRemoteModule() {
 			fi
 			;;
 		oci8 | pdo_oci)
+			case "$DISTRO" in
+				debian)
+					if test $DISTRO_VERSION_NUMBER -ge 13; then
+						if test -f /usr/lib/$TARGET_TRIPLET/libaio.so.1t64 && ! test -f /usr/lib/$TARGET_TRIPLET/libaio.so.1; then
+							ln -s /usr/lib/$TARGET_TRIPLET/libaio.so.1t64 /usr/lib/$TARGET_TRIPLET/libaio.so.1
+						fi
+						if test -f /usr/lib/$TARGET_TRIPLET/libaio.so.1 && ! test -f /usr/lib/$TARGET_TRIPLET/libaio.so; then
+							ln -s /usr/lib/$TARGET_TRIPLET/libaio.so.1 /usr/lib/$TARGET_TRIPLET/libaio.so
+						fi
+					fi
+					;;
+			esac
 			installOracleInstantClient
 			if test "$installRemoteModule_module" = oci8; then
 				addConfigureOption with-oci8 "instantclient,$ORACLE_INSTANTCLIENT_LIBPATH"
@@ -3684,6 +3891,13 @@ installRemoteModule() {
 				addConfigureOption enable-swoole-json yes
 				# enable curl support?
 				addConfigureOption enable-swoole-curl yes
+			fi
+			;;
+		opentelemetry)
+			if test -z "$installRemoteModule_version"; then
+				if test $PHP_MAJMIN_VERSION -lt 801; then
+					installRemoteModule_version=1.1.3
+				fi
 			fi
 			;;
 		operator)
@@ -3914,38 +4128,63 @@ installRemoteModule() {
 			installRemoteModule_manuallyInstalled=1
 			;;
 		saxon)
+			case "${IPE_SAXON_EDITION:-}" in
+				EE | PE | HE)
+					installRemoteModule_edition=$IPE_SAXON_EDITION
+					;;
+				*)
+					installRemoteModule_edition=EE
+					;;
+			esac
+			case $(uname -m) in
+				aarch64 | arm64 | armv8)
+					installRemoteModule_architecture=linux-aarch64
+					;;
+				*)
+					installRemoteModule_architecture=linux-x86_64
+					;;
+			esac
 			if test -z "$installRemoteModule_version"; then
-				if test $PHP_MAJMIN_VERSION -ge 800; then
-					installRemoteModule_version='12.5.0'
-				else
+				if test $PHP_MAJMIN_VERSION -lt 800; then
 					installRemoteModule_version='12.3'
 				fi
 			fi
-			installRemoteModule_majorVersion="${installRemoteModule_version%%.*}"
-			if test "$installRemoteModule_majorVersion" -ge 12; then
-				case $(uname -m) in
-					aarch64 | arm64 | armv8)
-						installRemoteModule_url=https://downloads.saxonica.com/SaxonC/EE/${installRemoteModule_majorVersion}/libsaxon-EEC-linux-aarch64-v${installRemoteModule_version}.zip
-						;;
-					*)
-						installRemoteModule_url=https://downloads.saxonica.com/SaxonC/EE/${installRemoteModule_majorVersion}/libsaxon-EEC-linux-x86_64-v${installRemoteModule_version}.zip
-						;;
-				esac
+			installRemoteModule_majorVersion=
+			if test -n "$installRemoteModule_version"; then
+				installRemoteModule_majorVersion="${installRemoteModule_version%%.*}"
+				if test "$installRemoteModule_majorVersion" -ge 12; then
+					installRemoteModule_url=https://downloads.saxonica.com/SaxonC/${installRemoteModule_edition}/${installRemoteModule_majorVersion}/libsaxon-${installRemoteModule_edition}C-${installRemoteModule_architecture}-v${installRemoteModule_version}.zip
+				else
+					installRemoteModule_url=https://downloads.saxonica.com/SaxonC/${installRemoteModule_edition}/${installRemoteModule_majorVersion}/libsaxon-${installRemoteModule_edition}C-setup64-v${installRemoteModule_version}.zip
+				fi
 			else
-				installRemoteModule_url=https://downloads.saxonica.com/SaxonC/EE/${installRemoteModule_majorVersion}/libsaxon-EEC-setup64-v${installRemoteModule_version}.zip
+				installRemoteModule_regex="https://downloads.saxonica.com/SaxonC/${installRemoteModule_edition}/[0-9]+/SaxonC${installRemoteModule_edition}-${installRemoteModule_architecture}-[0-9\-]+.zip"
+				installRemoteModule_url="$(curl -sSLf https://www.saxonica.com/download/c.xml | grep -Eo "$installRemoteModule_regex" | head -n 1)"
+				if test $? -ne 0 || test -z "$installRemoteModule_url"; then
+					printf "Failed to determine SaxonC download URL - Nothing matches\n%s\n" "$installRemoteModule_regex"
+					exit 1
+				fi
 			fi
+			printf 'Downloading SaxonC %s from %s\n' "$installRemoteModule_edition" "$installRemoteModule_url"
 			installRemoteModule_dir="$(getPackageSource $installRemoteModule_url)"
 			if ! test -f /usr/lib/libsaxon-*.so; then
-				if test "$installRemoteModule_majorVersion" -ge 12; then
-					cp $installRemoteModule_dir/libs/nix/*.so /usr/lib/
-				else
-					cp $installRemoteModule_dir/*.so /usr/lib/
-				fi
+				installRemoteModule_files="$(find "$installRemoteModule_dir" \( -type f -o -type l \) \( -name 'libsaxonc-*.so*' -o -name 'libsaxon-*.so*' \))"
+				for installRemoteModule_file in $installRemoteModule_files; do
+					cp -P "$installRemoteModule_file" /usr/lib/
+				done
 				ldconfig || true
 			fi
-			cd "$installRemoteModule_dir/Saxon.C.API"
+			installRemoteModule_files="$(find "$installRemoteModule_dir" -type f -name php8_XsltExecutable.cpp)"
+			for installRemoteModule_file in $installRemoteModule_files; do
+				sed -i 's/Z_TYPE_P(val) != NULL/Z_TYPE_P(val) != IS_NULL/g' "$installRemoteModule_file"
+			done
+			if test -d "$installRemoteModule_dir/php/src"; then
+				cd "$installRemoteModule_dir/php/src"
+			else
+				cd "$installRemoteModule_dir/Saxon.C.API"
+			fi
 			phpize
-			./configure --enable-saxon
+			./configure --with-saxon="$installRemoteModule_dir/SaxonC${installRemoteModule_edition}"
 			make -j$(getProcessorCount) install
 			cd - >/dev/null
 			installRemoteModule_manuallyInstalled=1
@@ -4035,7 +4274,7 @@ installRemoteModule() {
 		spx)
 			if test -z "$installRemoteModule_path"; then
 				if test -z "$installRemoteModule_version"; then
-					installRemoteModule_version=v0.4.18
+					installRemoteModule_version=v0.4.20
 				fi
 				if test "${installRemoteModule_version%.*}" = "$installRemoteModule_version"; then
 					installRemoteModule_displayVersion="$installRemoteModule_version"
@@ -4429,6 +4668,13 @@ installRemoteModule() {
 						fi
 					fi
 					;;
+				debian)
+					if test $DISTRO_VERSION_NUMBER -ge 13; then
+						if test -f /usr/lib/$TARGET_TRIPLET/libblas.so.3 && ! test -f /usr/lib/$TARGET_TRIPLET/libblas.so; then
+							ln -s /usr/lib/$TARGET_TRIPLET/libblas.so.3 /usr/lib/$TARGET_TRIPLET/libblas.so
+						fi
+					fi
+					;;
 			esac
 			;;
 		tideways)
@@ -4481,6 +4727,17 @@ installRemoteModule() {
 			fi
 			mv "$installRemoteModule_src" $(getPHPExtensionsDir)/tideways.so
 			installRemoteModule_manuallyInstalled=1
+			;;
+		translit)
+			if test -z "$installRemoteModule_version"; then
+				if test $PHP_MAJMIN_VERSION -lt 506; then
+					installRemoteModule_version=0.6.1
+				elif test $PHP_MAJMIN_VERSION -lt 700; then
+					installRemoteModule_version=0.6.3
+				else
+					installRemoteModule_version=beta
+				fi
+			fi
 			;;
 		uopz)
 			installRemoteModule_cppflags='-Wno-incompatible-pointer-types'
@@ -4952,21 +5209,29 @@ invokeAptGetUpdate() {
 		invokeAptGetUpdate_fixdistro=jessie
 	elif grep -q 'VERSION="9 (stretch)"' /etc/os-release; then
 		invokeAptGetUpdate_fixdistro=stretch
+	elif grep -q 'VERSION="10 (buster)"' /etc/os-release; then
+		invokeAptGetUpdate_fixdistro=buster
 	else
 		invokeAptGetUpdate
 		return
 	fi
 	# See https://www.debian.org/distrib/archive.en.html for a list of mirrors
 	if test -z "${IPE_DEB_ARCHIVE:-}"; then
-		IPE_DEB_ARCHIVE=http://archive.kernel.org/debian-archive
+		IPE_DEB_ARCHIVE=http://archive.debian.org/debian-archive
 	fi
 	if test -z "${IPE_DEB_ARCHIVE_SECURITY:-}"; then
-		IPE_DEB_ARCHIVE_SECURITY=http://archive.kernel.org/debian-archive/debian-security
+		IPE_DEB_ARCHIVE_SECURITY=http://archive.debian.org/debian-archive/debian-security
 	fi
 	sed -ri "s;^(\s*deb\s+http://(httpredir|deb).debian.org/debian\s+$invokeAptGetUpdate_fixdistro-updates\b.*);#\1;" /etc/apt/sources.list
 	sed -ri "s;^(\s*deb\s+)http://(httpredir|deb).debian.org;\1$IPE_DEB_ARCHIVE;" /etc/apt/sources.list
 	sed -ri "s;^(\s*deb\s+)http://security.debian.org/debian-security;\1$IPE_DEB_ARCHIVE_SECURITY;" /etc/apt/sources.list
 	sed -ri "s;^(\s*deb\s+)http://security.debian.org;\1$IPE_DEB_ARCHIVE_SECURITY;" /etc/apt/sources.list
+	if test "$invokeAptGetUpdate_fixdistro" = stretch && test -f /etc/apt/sources.list.d/buster.list; then
+		sed -ri "s;^(\s*deb\s+http://(httpredir|deb).debian.org/debian\s+buster-updates\b.*);#\1;" /etc/apt/sources.list.d/buster.list
+		sed -ri "s;^(\s*deb\s+)http://(httpredir|deb).debian.org;\1$IPE_DEB_ARCHIVE;" /etc/apt/sources.list.d/buster.list
+		sed -ri "s;^(\s*deb\s+)http://security.debian.org/debian-security;\1$IPE_DEB_ARCHIVE_SECURITY;" /etc/apt/sources.list.d/buster.list
+		sed -ri "s;^(\s*deb\s+)http://security.debian.org;\1$IPE_DEB_ARCHIVE_SECURITY;" /etc/apt/sources.list.d/buster.list
+	fi
 	invokeAptGetUpdate_tmp="$(mktemp)"
 	apt-get update -q 2>"$invokeAptGetUpdate_tmp"
 	if test -s "$invokeAptGetUpdate_tmp"; then
@@ -5153,7 +5418,7 @@ for PHP_MODULE_TO_INSTALL in $PHP_MODULES_TO_INSTALL; do
 			installComposer
 			;;
 		*)
-			if stringInList "$PHP_MODULE_TO_INSTALL" "$BUNDLED_MODULES"; then
+			if stringInList "$PHP_MODULE_TO_INSTALL" "$BUNDLED_MODULES" && ! stringInList "$PHP_MODULE_TO_INSTALL" "$FORCED_REMOTE_MODULES"; then
 				installBundledModule "$PHP_MODULE_TO_INSTALL"
 			else
 				installRemoteModule "$PHP_MODULE_TO_INSTALL"
