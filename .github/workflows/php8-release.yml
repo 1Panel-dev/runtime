@@ -47,7 +47,7 @@ jobs:
         with:
           context: php/7
           file: php/7/Dockerfile
-          platforms: linux/amd64,linux/arm/v7,linux/arm64/v8,linux/s390x
+          platforms: linux/amd64,linux/arm/v7,linux/arm64/v8
           push: true
           build-args:
             PHP_VERSION=${{ github.event.inputs.php84Version }}
@@ -61,7 +61,7 @@ jobs:
         with:
           context: php/7
           file: php/7/Dockerfile
-          platforms: linux/amd64,linux/arm/v7,linux/arm64/v8,linux/s390x
+          platforms: linux/amd64,linux/arm/v7,linux/arm64/v8
           push: true
           build-args:
             PHP_VERSION=${{ github.event.inputs.php83Version }}
@@ -75,7 +75,7 @@ jobs:
         with:
           context: php/7
           file: php/7/Dockerfile
-          platforms: linux/amd64,linux/arm/v7,linux/arm64/v8,linux/s390x
+          platforms: linux/amd64,linux/arm/v7,linux/arm64/v8
           push: true
           build-args:
             PHP_VERSION=${{ github.event.inputs.php82Version }}
@@ -89,7 +89,7 @@ jobs:
         with:
           context: php/7
           file: php/7/Dockerfile
-          platforms: linux/amd64,linux/arm/v7,linux/arm64/v8,linux/s390x
+          platforms: linux/amd64,linux/arm/v7,linux/arm64/v8
           push: true
           build-args:
             PHP_VERSION=${{ github.event.inputs.php81Version }}
@@ -103,7 +103,7 @@ jobs:
         with:
           context: php/7
           file: php/7/Dockerfile
-          platforms: linux/amd64,linux/arm/v7,linux/arm64/v8,linux/s390x
+          platforms: linux/amd64,linux/arm/v7,linux/arm64/v8
           push: true
           build-args:
             PHP_VERSION=${{ github.event.inputs.php80Version }}
