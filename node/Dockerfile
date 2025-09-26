@@ -2,7 +2,7 @@ ARG NODE_VERSION
 
 FROM node:${NODE_VERSION}
 
-RUN npm install -g pnpm
+RUN npm install -g pnpm pm2
 
 COPY docker-entrypoint.sh /usr/local/bin/
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh
