@@ -29,7 +29,7 @@ main:
       imports: https://cnb.cool/1Panel-dev/secrets/-/blob/main/docker-1panel-envs.yml
       stages:
         - name: set docker tag
-          script: echo -n "${DOCKER_REGISTRY}/${DOCKER_GROUP}/php-fpm:$PHP_VERSION"
+          script: echo -n "${DOCKER_REGISTRY}/${DOCKER_GROUP}/php:${PHP_VERSION}-fpm"
           exports:
             info: IMAGE_TAG
         - name: docker login
