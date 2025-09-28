@@ -21,7 +21,7 @@ main:
             -f node/Dockerfile 
             node/ 
             --push
-  web_trigger_build_php_7_x_image:
+  web_trigger_build_php_image:
     - runner:
         tags: cnb:arch:amd64:containerd-snapshotter
       services:
@@ -37,9 +37,8 @@ main:
 
         - name: docker build and push
           script: docker buildx build 
-              --platform linux/amd64,linux/arm/v7,linux/arm64/v8
+              --platform $PLATFORM
               -t $IMAGE_TAG 
               -f php/$PHP_VERSION/Dockerfile 
               php/$PHP_VERSION/ 
               --push
-  
