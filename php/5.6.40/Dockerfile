@@ -87,6 +87,7 @@ COPY ./data/openssl-1.0.2u.tar.gz /tmp/openssl-1.0.2u.tar.gz
 COPY ./data/docker-php-source /usr/local/bin/
 COPY ./data/docker-php-ext-* /usr/local/bin/
 RUN chmod +x /usr/local/bin/docker-php-source /usr/local/bin/docker-php-ext-*
+COPY ./data/install-php-extensions  /usr/local/bin/
 
 ENV OPENSSL_PREFIX=/usr/local/openssl
 ENV CURL_PREFIX=/usr/local/curl
@@ -235,7 +236,6 @@ RUN apt-get update && \
     apt-get install -y supervisor iputils-ping && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/* &&\
-    curl -fsSL -o /usr/local/bin/install-php-extensions https://github.com/mlocati/docker-php-extension-installer/releases/latest/download/install-php-extensions && \
     chmod uga+x /usr/local/bin/install-php-extensions && \
     curl -o /tmp/composer-setup.php https://getcomposer.org/installer &&\
     php /tmp/composer-setup.php --install-dir=/tmp && \
