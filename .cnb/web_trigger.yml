@@ -18,8 +18,8 @@ branch:
             required: true
           PLATFORM:
             name: "编译平台"
-            description: "编译平台，多个用逗号分隔"
-            default: "linux/amd64,linux/arm64,linux/ppc64le,linux/s390x"
+            description: "linux/amd64,linux/arm64,linux/arm/v7,linux/s390x"
+            default: "linux/amd64,linux/arm64"
             required: true 
   - buttons: 
     - name: "编译 Node.js 镜像"
@@ -36,5 +36,5 @@ branch:
         PLATFORM:  
           name: "编译平台"
           description: "编译平台，多个用逗号分隔"
-          default: "linux/amd64,linux/arm64,linux/ppc64le,linux/s390x"
+          default: "linux/amd64,linux/arm64,linux/arm/v7,linux/s390x"
           required: true
