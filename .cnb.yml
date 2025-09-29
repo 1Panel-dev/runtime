@@ -36,7 +36,8 @@ main:
           script: docker login -u ${DOCKER_USER} -p "${DOCKER_PWD}" ${DOCKER_REGISTRY}
 
         - name: docker build and push
-          script: docker buildx build 
+          script: docker buildx build
+              --build-arg PHP_VERSION=$PHP_VERSION
               --platform $PLATFORM
               -t $IMAGE_TAG 
               -f php/$DIR/Dockerfile 
