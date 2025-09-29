@@ -41,6 +41,8 @@ jobs:
           file: php/${{ github.event.inputs.php_dir }}/Dockerfile
           platforms: ${{ github.event.inputs.platform }}
           push: true
+          build-args:
+            PHP_VERSION=${{ github.event.inputs.php_version }}
           tags: |
             1panel/php:${{ github.event.inputs.php_version }}-fpm
           cache-from: type=gha
