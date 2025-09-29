@@ -11,6 +11,11 @@ branch:
             description: "PHP 版本"
             default: "7.2.34"
             required: true
+          DIR:
+            name: "文件目录"
+            description: "文件目录"
+            default: "72.34"
+            required: true
           PLATFORM:
             name: "编译平台"
             description: "编译平台，多个用逗号分隔"

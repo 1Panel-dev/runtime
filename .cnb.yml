@@ -39,6 +39,6 @@ main:
           script: docker buildx build 
               --platform $PLATFORM
               -t $IMAGE_TAG 
-              -f php/$PHP_VERSION/Dockerfile 
-              php/$PHP_VERSION/ 
+              -f php/$DIR/Dockerfile 
+              php/$DIR/ 
               --push
