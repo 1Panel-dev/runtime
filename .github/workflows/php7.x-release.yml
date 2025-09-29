@@ -7,6 +7,14 @@ on:
         description: 'PHP 7.x Version'
         default: '7.2.34'
         required: true
+      php_dir:
+        description: 'Dockerfile Directory'
+        default: '7.2.34'
+        required: true
+      platform:
+        description: 'platform'
+        default: 'linux/amd64,linux/arm64/v8,linux/arm/v7'
+        required: true
 jobs:
   docker:
     runs-on: ubuntu-latest
@@ -29,9 +37,9 @@ jobs:
       - name: Build PHP-7.x and Push
         uses: docker/build-push-action@v5
         with:
-          context: php/${{ github.event.inputs.php_version }}
-          file: php/${{ github.event.inputs.php_version }}/Dockerfile
-          platforms: linux/amd64,linux/arm/v7,linux/arm64/v8
+          context: php/${{ github.event.inputs.php_dir }}
+          file: php/${{ github.event.inputs.php_dir }}/Dockerfile
+          platforms: ${{ github.event.inputs.platform }}
           push: true
           tags: |
             1panel/php:${{ github.event.inputs.php_version }}-fpm
