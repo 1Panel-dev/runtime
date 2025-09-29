@@ -14,7 +14,7 @@ branch:
           DIR:
             name: "文件目录"
             description: "文件目录"
-            default: "72.34"
+            default: "7.2.34"
             required: true
           PLATFORM:
             name: "编译平台"
