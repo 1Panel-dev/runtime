@@ -28,8 +28,8 @@ jobs:
       - name: Build PHP-FPM Image and Push
         uses: docker/build-push-action@v5
         with:
-          context: php/7
-          file: php/7/Dockerfile
+          context: php/8
+          file: php/8/Dockerfile
           platforms: linux/amd64,linux/arm/v7,linux/arm64/v8
           push: true
           build-args:
