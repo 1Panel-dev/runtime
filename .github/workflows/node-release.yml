@@ -7,6 +7,10 @@ on:
         description: 'Node Version'
         default: '24.10.0'
         required: true
+      platforms:
+        description: 'Platforms'
+        default: 'linux/amd64,linux/arm64/v8,linux/ppc64le,linux/s390x'
+        required: true  
 jobs:
   docker:
     runs-on: ubuntu-latest
@@ -31,7 +35,7 @@ jobs:
         with:
           context: node
           file: node/Dockerfile
-          platforms: linux/amd64,linux/arm64/v8,linux/ppc64le,linux/s390x
+          platforms: ${{ github.event.inputs.platforms }}
           push: true
           build-args:
             NODE_VERSION=${{ github.event.inputs.nodeVersion }}
