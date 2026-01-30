@@ -4,12 +4,12 @@ on:
   workflow_dispatch:
     inputs:
       sourceTag:
-        description: "Source tag on ghcr.io/moltbot/moltbot"
-        default: "main"
+        description: "Source tag on ghcr.io/openclaw/openclaw"
+        default: "2026.1.29"
         required: true
       targetTag:
-        description: "Target tag on 1panel/moltbot"
-        default: "2026.1.25"
+        description: "Target tag on 1panel/openclaw"
+        default: "2026.1.29"
         required: true
 
 jobs:
@@ -29,5 +29,5 @@ jobs:
         run: |
           set -euo pipefail
           docker buildx imagetools create \
-            --tag 1panel/moltbot:${{ github.event.inputs.targetTag }} \
-            ghcr.io/moltbot/moltbot:${{ github.event.inputs.sourceTag }}
+            --tag 1panel/openclaw:${{ github.event.inputs.targetTag }} \
+            ghcr.io/openclaw/openclaw:${{ github.event.inputs.sourceTag }}
