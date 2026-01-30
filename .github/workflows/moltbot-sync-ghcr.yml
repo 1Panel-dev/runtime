@@ -25,9 +25,10 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_PASSWORD }}
 
-      - name: Copy Multi-Arch Image
+      - name: Copy Multi-Arch Image (tag + latest)
         run: |
           set -euo pipefail
           docker buildx imagetools create \
             --tag 1panel/openclaw:${{ github.event.inputs.targetTag }} \
+            --tag 1panel/openclaw:latest \
             ghcr.io/openclaw/openclaw:${{ github.event.inputs.sourceTag }}
