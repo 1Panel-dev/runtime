@@ -5,11 +5,11 @@ on:
     inputs:
       sourceTag:
         description: "Source tag on ghcr.io/openclaw/openclaw"
-        default: "2026.1.29"
+        default: "2026.2.2"
         required: true
       targetTag:
         description: "Target tag on 1panel/openclaw"
-        default: "2026.1.29"
+        default: "2026.2.2"
         required: true
 
 jobs:
