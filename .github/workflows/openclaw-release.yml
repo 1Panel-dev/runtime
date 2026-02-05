@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
     inputs:
       openclawTag:
-        description: "OpenClaw Release Tag"
+        description: "OpenClaw Release Tag 2026.2.3, etc."
         required: true
       dockerhubTag:
         description: "Docker Hub Tag"
@@ -40,23 +40,11 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_PASSWORD }}
 
-      - name: Resolve Tag
-        id: tag
-        run: |
-          if [ -n "${{ github.event.inputs.openclawTag }}" ]; then
-            raw_tag="${{ github.event.inputs.openclawTag }}"
-          else
-            raw_tag="${GITHUB_REF_NAME}"
-          fi
-          clean_tag="${raw_tag#v}"
-          echo "value=${raw_tag}" >> "$GITHUB_OUTPUT"
-          echo "clean=${clean_tag}" >> "$GITHUB_OUTPUT"
-
       - name: Download Source
         run: |
           set -euo pipefail
           mkdir -p _src/openclaw
-          curl -fsSL "https://github.com/openclaw/openclaw/archive/refs/tags/${{ steps.tag.outputs.value }}.tar.gz" \
+          curl -fsSL "https://github.com/openclaw/openclaw/archive/refs/tags/${{ github.event.inputs.openclawTag }}.tar.gz" \
             | tar -xz -C _src/openclaw --strip-components=1
 
       - name: Build OpenClaw Image and Push
@@ -67,7 +55,7 @@ jobs:
           platforms: ${{ github.event.inputs.platforms || 'linux/amd64,linux/arm64/v8' }}
           push: true
           tags: |
-            1panel/openclaw:${{ github.event.inputs.dockerhubTag || github.event.inputs.openclawTag  }}
+            1panel/openclaw:${{ github.event.inputs.dockerhubTag || github.event.inputs.openclawTag }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
