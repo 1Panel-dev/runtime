@@ -1,4 +1,4 @@
-name: Build Moltbot Image
+name: Build OpenClaw Image
 
 on:
   push:
@@ -6,8 +6,8 @@ on:
       - "v*"
   workflow_dispatch:
     inputs:
-      moltbotTag:
-        description: "Moltbot Release Tag"
+      openclawTag:
+        description: "OpenClaw Release Tag"
         required: true
       platforms:
         description: "Platforms"
@@ -40,8 +40,8 @@ jobs:
       - name: Resolve Tag
         id: tag
         run: |
-          if [ -n "${{ github.event.inputs.moltbotTag }}" ]; then
-            raw_tag="${{ github.event.inputs.moltbotTag }}"
+          if [ -n "${{ github.event.inputs.openclawTag }}" ]; then
+            raw_tag="${{ github.event.inputs.openclawTag }}"
           else
             raw_tag="${GITHUB_REF_NAME}"
           fi
@@ -52,19 +52,19 @@ jobs:
       - name: Download Source
         run: |
           set -euo pipefail
-          mkdir -p _src/moltbot
-          curl -fsSL "https://github.com/moltbot/moltbot/archive/refs/tags/${{ steps.tag.outputs.value }}.tar.gz" \
-            | tar -xz -C _src/moltbot --strip-components=1
+          mkdir -p _src/openclaw
+          curl -fsSL "https://github.com/openclaw/openclaw/archive/refs/tags/${{ steps.tag.outputs.value }}.tar.gz" \
+            | tar -xz -C _src/openclaw --strip-components=1
 
-      - name: Build Moltbot Image and Push
+      - name: Build OpenClaw Image and Push
         uses: docker/build-push-action@v5
         with:
-          context: _src/moltbot
-          file: moltbot/Dockerfile
+          context: _src/openclaw
+          file: openclaw/Dockerfile
           platforms: ${{ github.event.inputs.platforms || 'linux/amd64,linux/arm64/v8' }}
           push: true
           tags: |
-            1panel/moltbot:${{ steps.tag.outputs.clean }}
+            1panel/openclaw:${{ steps.tag.outputs.clean }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -72,11 +72,11 @@ jobs:
         if: ${{ github.event_name == 'push' || github.event.inputs.pushLatest == 'true' }}
         uses: docker/build-push-action@v5
         with:
-          context: _src/moltbot
-          file: moltbot/Dockerfile
+          context: _src/openclaw
+          file: openclaw/Dockerfile
           platforms: ${{ github.event.inputs.platforms || 'linux/amd64,linux/arm64/v8' }}
           push: true
           tags: |
-            1panel/moltbot:latest
+            1panel/openclaw:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
