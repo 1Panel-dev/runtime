@@ -1,15 +1,15 @@
-name: Sync Moltbot GHCR Image
+name: Sync OpenClaw GHCR Image
 
 on:
   workflow_dispatch:
     inputs:
       sourceTag:
         description: "Source tag on ghcr.io/openclaw/openclaw"
-        default: "2026.2.2"
+        default: "2026.2.6"
         required: true
       targetTag:
         description: "Target tag on 1panel/openclaw"
-        default: "2026.2.2"
+        default: "2026.2.6"
         required: true
 
 jobs:
