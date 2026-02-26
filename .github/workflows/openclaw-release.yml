@@ -56,6 +56,9 @@ jobs:
           file: openclaw/Dockerfile
           platforms: ${{ github.event.inputs.platforms || 'linux/amd64,linux/arm64/v8' }}
           push: true
+          build-args: |
+            OPENCLAW_INSTALL_BROWSER=true
+            OPENCLAW_VERSION=${{ github.event.inputs.openclawTag }}
           tags: |
             1panel/openclaw:${{ github.event.inputs.dockerhubTag || github.event.inputs.openclawTag }}
           cache-from: type=gha
@@ -69,6 +72,9 @@ jobs:
           file: openclaw/Dockerfile
           platforms: ${{ github.event.inputs.platforms || 'linux/amd64,linux/arm64/v8' }}
           push: true
+          build-args: |
+            OPENCLAW_INSTALL_BROWSER=true
+            OPENCLAW_VERSION=${{ github.event.inputs.openclawTag }}
           tags: |
             1panel/openclaw:latest
           cache-from: type=gha
