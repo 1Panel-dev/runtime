@@ -100,11 +100,13 @@ RUN for dir in /app/extensions /app/.agent /app/.agents; do \
       fi; \
     done
 
-RUN pnpm build
-
 # Force pnpm for UI build (Bun may fail on ARM/Synology architectures)
 ENV OPENCLAW_PREFER_PNPM=1
-RUN pnpm ui:build
+
+# OpenClaw now requires A2UI assets to be bundled before the main build.
+RUN pnpm canvas:a2ui:bundle && \
+    pnpm build && \
+    pnpm ui:build
 
 # ---- add openclaw command ----
 # Makes `openclaw ...` follow the upstream launcher while preserving
@@ -119,10 +121,9 @@ RUN printf '%s\n' \
 # -----------------------------
 
 USER node
-# Preinstall plugin into the image.
-# OpenClaw stores npm-installed plugins under ~/.openclaw/extensions by default.
-# Copy only qqbot into /app/extensions so the image contains a single bundled
-# plugin copy at a stable path.
+# Preinstall exactly one bundled plugin copy at /app/extensions/qqbot.
+# OpenClaw stores npm-installed plugins under ~/.openclaw/extensions by default,
+# so remove that source copy after extracting qqbot into the bundled location.
 RUN openclaw plugins install @sliverp/qqbot@latest && \
     mkdir -p /app/extensions && \
     if [ -d /home/node/.openclaw/extensions ]; then \
@@ -132,6 +133,7 @@ RUN openclaw plugins install @sliverp/qqbot@latest && \
         cp -R "$plugin_dir" /app/extensions/qqbot; \
         find /app/extensions/qqbot -type d -exec chmod 755 {} +; \
         find /app/extensions/qqbot -type f -exec chmod 644 {} +; \
+        rm -rf /home/node/.openclaw/extensions; \
       else \
         echo "qqbot plugin directory not found after installation" >&2; \
         exit 1; \
@@ -140,9 +142,7 @@ RUN openclaw plugins install @sliverp/qqbot@latest && \
 
 ENV NODE_ENV=production
 
-# Security hardening: Run as non-root user
-# The node:22-bookworm image includes a 'node' user (uid 1000)
-# This reduces the attack surface by preventing container escape via root privileges
+# Security hardening: run the gateway as the non-root node user.
 USER node
 
 # Start gateway server with default config.
