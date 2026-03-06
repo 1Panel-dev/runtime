@@ -120,26 +120,6 @@ RUN printf '%s\n' \
   && chmod +x /usr/local/bin/openclaw
 # -----------------------------
 
-USER node
-# Preinstall exactly one bundled plugin copy at /app/extensions/qqbot.
-# OpenClaw stores npm-installed plugins under ~/.openclaw/extensions by default,
-# so remove that source copy after extracting qqbot into the bundled location.
-RUN openclaw plugins install @sliverp/qqbot@latest && \
-    mkdir -p /app/extensions && \
-    if [ -d /home/node/.openclaw/extensions ]; then \
-      plugin_dir="$(find /home/node/.openclaw/extensions -type d -name qqbot | head -n 1)" && \
-      if [ -n "$plugin_dir" ]; then \
-        rm -rf /app/extensions/qqbot && \
-        cp -R "$plugin_dir" /app/extensions/qqbot; \
-        find /app/extensions/qqbot -type d -exec chmod 755 {} +; \
-        find /app/extensions/qqbot -type f -exec chmod 644 {} +; \
-        rm -rf /home/node/.openclaw/extensions; \
-      else \
-        echo "qqbot plugin directory not found after installation" >&2; \
-        exit 1; \
-      fi; \
-    fi
-
 ENV NODE_ENV=production
 
 # Security hardening: run the gateway as the non-root node user.
