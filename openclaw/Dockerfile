@@ -119,9 +119,18 @@ RUN printf '%s\n' \
 # -----------------------------
 
 USER node
-# Preinstall bundled plugin into the image so containers start with it present.
+# Preinstall plugin into the image.
 # OpenClaw stores npm-installed plugins under ~/.openclaw/extensions by default.
-RUN openclaw plugins install @sliverp/qqbot@latest
+# Mirror the installed plugin into the workspace extension directory so it still
+# auto-loads even when ~/.openclaw is bind-mounted at runtime and hides the
+# image-layer state dir.
+RUN openclaw plugins install @sliverp/qqbot@latest && \
+    mkdir -p /app/.openclaw/extensions && \
+    if [ -d /home/node/.openclaw/extensions ]; then \
+      cp -R /home/node/.openclaw/extensions/. /app/.openclaw/extensions/; \
+      find /app/.openclaw/extensions -type d -exec chmod 755 {} +; \
+      find /app/.openclaw/extensions -type f -exec chmod 644 {} +; \
+    fi
 
 ENV NODE_ENV=production
 
