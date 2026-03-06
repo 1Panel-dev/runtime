@@ -121,15 +121,21 @@ RUN printf '%s\n' \
 USER node
 # Preinstall plugin into the image.
 # OpenClaw stores npm-installed plugins under ~/.openclaw/extensions by default.
-# Mirror the installed plugin into the workspace extension directory so it still
-# auto-loads even when ~/.openclaw is bind-mounted at runtime and hides the
-# image-layer state dir.
+# Copy only qqbot into /app/extensions so the image contains a single bundled
+# plugin copy at a stable path.
 RUN openclaw plugins install @sliverp/qqbot@latest && \
-    mkdir -p /app/.openclaw/extensions && \
+    mkdir -p /app/extensions && \
     if [ -d /home/node/.openclaw/extensions ]; then \
-      cp -R /home/node/.openclaw/extensions/. /app/.openclaw/extensions/; \
-      find /app/.openclaw/extensions -type d -exec chmod 755 {} +; \
-      find /app/.openclaw/extensions -type f -exec chmod 644 {} +; \
+      plugin_dir="$(find /home/node/.openclaw/extensions -type d -name qqbot | head -n 1)" && \
+      if [ -n "$plugin_dir" ]; then \
+        rm -rf /app/extensions/qqbot && \
+        cp -R "$plugin_dir" /app/extensions/qqbot; \
+        find /app/extensions/qqbot -type d -exec chmod 755 {} +; \
+        find /app/extensions/qqbot -type f -exec chmod 644 {} +; \
+      else \
+        echo "qqbot plugin directory not found after installation" >&2; \
+        exit 1; \
+      fi; \
     fi
 
 ENV NODE_ENV=production
