@@ -1,6 +1,8 @@
 {
 	admin off
 	auto_https disable_redirects
+	default_sni {$CADDY_SITE_ADDRESS}
+	skip_install_trust
 	storage file_system {
 		root /data/caddy
 	}
