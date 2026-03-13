@@ -28,7 +28,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
@@ -50,7 +50,7 @@ jobs:
             | tar -xz -C _src/openclaw --strip-components=1
 
       - name: Build OpenClaw Image and Push
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v6
         with:
           context: _src/openclaw
           file: openclaw/Dockerfile
@@ -66,7 +66,7 @@ jobs:
 
       - name: Push Latest Tag
         if: ${{ github.event_name == 'push' || github.event.inputs.pushLatest == 'true' }}
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v6
         with:
           context: _src/openclaw
           file: openclaw/Dockerfile
