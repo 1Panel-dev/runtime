@@ -6,7 +6,7 @@ mkdir -p /tmp/caddy /data/caddy /config/caddy
 "$@" &
 openclaw_pid=$!
 
-/usr/bin/caddy run --config /etc/caddy/Caddyfile --adapter caddyfile &
+/usr/bin/caddy run --config /etc/caddy/Caddyfile --adapter caddyfile >>/tmp/caddy/caddy.log 2>&1 &
 caddy_pid=$!
 
 term_handler() {
