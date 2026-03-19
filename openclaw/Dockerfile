@@ -135,7 +135,7 @@ RUN --mount=type=cache,id=openclaw-bookworm-apt-cache,target=/var/cache/apt,shar
     apt-get update && \
     DEBIAN_FRONTEND=noninteractive apt-get upgrade -y --no-install-recommends && \
     DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
-      procps hostname curl git openssl
+      procps hostname curl git openssl python3 python-is-python3
 
 RUN chown node:node /app
 
@@ -166,6 +166,9 @@ RUN install -d -m 0755 "$COREPACK_HOME" && \
       sleep $((attempt * 2)); \
     done && \
     chmod -R a+rX "$COREPACK_HOME"
+
+RUN npm install -g clawhub@latest && \
+    npm cache clean --force
 
 # Install additional system packages needed by your skills or extensions.
 # Example: docker build --build-arg OPENCLAW_DOCKER_APT_PACKAGES="python3 wget" .
