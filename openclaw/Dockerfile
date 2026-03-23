@@ -14,6 +14,7 @@
 #   Slim (bookworm-slim):    docker build --build-arg OPENCLAW_VARIANT=slim .
 ARG OPENCLAW_EXTENSIONS=""
 ARG OPENCLAW_VARIANT=default
+ARG OPENCLAW_DOCKER_APT_UPGRADE=1
 ARG OPENCLAW_CADDY_IMAGE="caddy:2"
 ARG OPENCLAW_NODE_BOOKWORM_IMAGE="node:24-bookworm@sha256:3a09aa6354567619221ef6c45a5051b671f953f0a1924d1f819ffb236e520e6b"
 ARG OPENCLAW_NODE_BOOKWORM_DIGEST="sha256:3a09aa6354567619221ef6c45a5051b671f953f0a1924d1f819ffb236e520e6b"
@@ -114,6 +115,7 @@ LABEL org.opencontainers.image.base.name="docker.io/library/node:24-bookworm-sli
 
 FROM base-${OPENCLAW_VARIANT}
 ARG OPENCLAW_VARIANT
+ARG OPENCLAW_DOCKER_APT_UPGRADE
 
 # OCI base-image metadata for downstream image consumers.
 # If you change these annotations, also update:
@@ -130,12 +132,16 @@ WORKDIR /app
 
 # Install system utilities present in bookworm but missing in bookworm-slim.
 # On the full bookworm image these are already installed (apt-get is a no-op).
+# Smoke workflows can opt out of distro upgrades to cut repeated CI time while
+# keeping the default runtime image behavior unchanged.
 RUN --mount=type=cache,id=openclaw-bookworm-apt-cache,target=/var/cache/apt,sharing=locked \
     --mount=type=cache,id=openclaw-bookworm-apt-lists,target=/var/lib/apt,sharing=locked \
     apt-get update && \
-    DEBIAN_FRONTEND=noninteractive apt-get upgrade -y --no-install-recommends && \
+    if [ "${OPENCLAW_DOCKER_APT_UPGRADE}" != "0" ]; then \
+      DEBIAN_FRONTEND=noninteractive apt-get upgrade -y --no-install-recommends; \
+    fi && \
     DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
-      procps hostname curl git openssl python3 python-is-python3
+      procps hostname curl git lsof openssl python3 python-is-python3
 
 RUN chown node:node /app
 
@@ -149,6 +155,10 @@ COPY --from=runtime-assets --chown=node:node /app/docs ./docs
 COPY --from=caddy-binary /usr/bin/caddy /usr/bin/caddy
 COPY openclaw/Caddyfile /etc/caddy/Caddyfile
 COPY openclaw/docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
+
+# In npm-installed Docker images, prefer the copied source extension tree for
+# bundled discovery so package metadata that points at source entries stays valid.
+ENV OPENCLAW_BUNDLED_PLUGINS_DIR=/app/extensions
 
 # Keep pnpm available in the runtime image for container-local workflows.
 # Use a shared Corepack home so the non-root `node` user does not need a
@@ -228,17 +238,10 @@ RUN --mount=type=cache,id=openclaw-bookworm-apt-cache,target=/var/cache/apt,shar
         docker-ce-cli docker-compose-plugin; \
     fi
 
-# ---- add openclaw command ----
-# Keeps the customized CMD shape while following the upstream launcher.
-RUN printf '%s\n' \
-  '#!/bin/sh' \
-  'set -e' \
-  'exec node /app/openclaw.mjs "$@"' \
-  > /usr/local/bin/openclaw && \
+RUN ln -sf /app/openclaw.mjs /usr/local/bin/openclaw && \
   install -d -o node -g node /data /config /etc/caddy /tmp/caddy && \
-  chmod 755 /usr/local/bin/openclaw /usr/local/bin/docker-entrypoint.sh /usr/bin/caddy /app/openclaw.mjs && \
+  chmod 755 /usr/local/bin/docker-entrypoint.sh /usr/bin/caddy /app/openclaw.mjs && \
   chown -R node:node /data /config /etc/caddy /tmp/caddy
-# -----------------------------
 
 ENV CADDY_HTTPS_PORT=8443
 ENV CADDY_SITE_ADDRESS=127.0.0.1
@@ -266,4 +269,4 @@ HEALTHCHECK --interval=3m --timeout=10s --start-period=15s --retries=3 \
 
 EXPOSE 8443
 ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]
-CMD ["openclaw", "gateway", "--allow-unconfigured"]
+CMD ["node", "openclaw.mjs", "gateway", "--allow-unconfigured"]
