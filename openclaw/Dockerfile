@@ -141,7 +141,7 @@ RUN --mount=type=cache,id=openclaw-bookworm-apt-cache,target=/var/cache/apt,shar
       DEBIAN_FRONTEND=noninteractive apt-get upgrade -y --no-install-recommends; \
     fi && \
     DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
-      procps hostname curl git lsof openssl python3 python-is-python3
+      procps hostname curl git lsof openssl
 
 RUN chown node:node /app
 
@@ -181,8 +181,10 @@ RUN npm install -g clawhub@latest && \
     npm cache clean --force
 
 # Install additional system packages needed by your skills or extensions.
-# Example: docker build --build-arg OPENCLAW_DOCKER_APT_PACKAGES="python3 wget" .
-ARG OPENCLAW_DOCKER_APT_PACKAGES=""
+# The runtime already includes git and curl from the base package set.
+# Default extras focus on common media and CLI workflows.
+# Example: docker build --build-arg OPENCLAW_DOCKER_APT_PACKAGES="ffmpeg jq python3 python-is-python3 build-essential pkg-config" .
+ARG OPENCLAW_DOCKER_APT_PACKAGES="ffmpeg jq python3 python-is-python3"
 RUN --mount=type=cache,id=openclaw-bookworm-apt-cache,target=/var/cache/apt,sharing=locked \
     --mount=type=cache,id=openclaw-bookworm-apt-lists,target=/var/lib/apt,sharing=locked \
     if [ -n "$OPENCLAW_DOCKER_APT_PACKAGES" ]; then \
