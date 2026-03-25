@@ -174,6 +174,11 @@ RUN install -d -m 0755 "$COREPACK_HOME" && \
 RUN npm install -g clawhub@latest && \
     npm cache clean --force
 
+RUN install -d -o node -g node /home/node/.local/bin && \
+    su -s /bin/sh node -c 'curl -fsSL https://skillhub-1388575217.cos.ap-guangzhou.myqcloud.com/install/install.sh | bash -s -- --no-skills' && \
+    ln -sf /home/node/.local/bin/skillhub /usr/local/bin/skillhub && \
+    chmod 755 /usr/local/bin/skillhub
+
 # Install additional system packages needed by your skills or extensions.
 # The runtime already includes git and curl from the base package set.
 # Default extras focus on common media and CLI workflows.

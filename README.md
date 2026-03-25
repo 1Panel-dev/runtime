@@ -18,7 +18,7 @@ Key points:
 
 1. It follows official OpenClaw releases and builds from upstream tags
 2. It stays close to the upstream OpenClaw Docker build flow while adding a small set of 1Panel-specific runtime dependencies
-3. It includes `clawhub` and a curated default `OPENCLAW_DOCKER_APT_PACKAGES` set for common media and scripting workflows
+3. It includes `clawhub`, `skillhub`, and a curated default `OPENCLAW_DOCKER_APT_PACKAGES` set for common media and scripting workflows
 
 ## Security
 

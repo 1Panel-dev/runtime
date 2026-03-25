@@ -18,7 +18,7 @@
 
 1. 跟随 OpenClaw 官方版本发布节奏，按 tag 拉取上游源码进行构建
 2. 尽量保持与 OpenClaw 上游 Docker 构建流程一致，只保留少量 1Panel 所需的运行时定制
-3. 内置 `clawhub`，并提供一组适合常见媒体处理和脚本场景的默认 `OPENCLAW_DOCKER_APT_PACKAGES`
+3. 内置 `clawhub`、`skillhub`，并提供一组适合常见媒体处理和脚本场景的默认 `OPENCLAW_DOCKER_APT_PACKAGES`
 
 ## 安全性
 
