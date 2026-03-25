@@ -17,14 +17,13 @@
 主要特点：
 
 1. 跟随 OpenClaw 官方版本发布节奏，按 tag 拉取上游源码进行构建
-2. 默认集成 `Caddy`，用于为 OpenClaw 提供 HTTPS 反向代理能力
-3. 增加 `openclaw` 命令，便于在容器中直接使用 OpenClaw 启动入口
+2. 尽量保持与 OpenClaw 上游 Docker 构建流程一致，只保留少量 1Panel 所需的运行时定制
+3. 内置 `clawhub`，并提供一组适合常见媒体处理和脚本场景的默认 `OPENCLAW_DOCKER_APT_PACKAGES`
 
 ## 安全性
 
 `1panel/openclaw` 的一个重点是安全性。
 
-- 默认通过集成的 `Caddy` 提供 HTTPS 访问入口，避免直接以明文 HTTP 暴露 Web 界面
 - 在满足 1Panel 需求的前提下，尽量保持与 OpenClaw 上游 Docker 行为接近
 
 ## 其他镜像

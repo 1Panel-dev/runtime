@@ -17,15 +17,15 @@ Current images in this repository:
 Key points:
 
 1. It follows official OpenClaw releases and builds from upstream tags
-2. It integrates `Caddy` by default to provide HTTPS reverse proxy for OpenClaw
-3. It adds an `openclaw` command for easier startup and in-container usage
+2. It stays close to the upstream OpenClaw Docker build flow while adding a small set of 1Panel-specific runtime dependencies
+3. It includes `clawhub` and a curated default `OPENCLAW_DOCKER_APT_PACKAGES` set for common media and scripting workflows
 
 ## Security
 
 Security is one of the main considerations for `1panel/openclaw`.
 
-- HTTPS is provided through bundled `Caddy` instead of exposing the web UI directly over plain HTTP
 - The image stays as close as practical to the upstream OpenClaw Docker behavior while keeping only the customizations needed by 1Panel
+- It avoids bundling an extra reverse-proxy process inside the image, which keeps the runtime surface smaller and simpler
 
 ## Other Images
 

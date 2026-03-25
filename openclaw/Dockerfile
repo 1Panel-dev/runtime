@@ -15,7 +15,6 @@
 ARG OPENCLAW_EXTENSIONS=""
 ARG OPENCLAW_VARIANT=default
 ARG OPENCLAW_DOCKER_APT_UPGRADE=1
-ARG OPENCLAW_CADDY_IMAGE="caddy:2"
 ARG OPENCLAW_NODE_BOOKWORM_IMAGE="node:24-bookworm@sha256:3a09aa6354567619221ef6c45a5051b671f953f0a1924d1f819ffb236e520e6b"
 ARG OPENCLAW_NODE_BOOKWORM_DIGEST="sha256:3a09aa6354567619221ef6c45a5051b671f953f0a1924d1f819ffb236e520e6b"
 ARG OPENCLAW_NODE_BOOKWORM_SLIM_IMAGE="node:24-bookworm-slim@sha256:e8e2e91b1378f83c5b2dd15f0247f34110e2fe895f6ca7719dbb780f929368eb"
@@ -37,8 +36,6 @@ RUN mkdir -p /out && \
         cp "/tmp/extensions/$ext/package.json" "/out/$ext/package.json"; \
       fi; \
     done
-
-FROM ${OPENCLAW_CADDY_IMAGE} AS caddy-binary
 
 FROM ${OPENCLAW_NODE_BOOKWORM_IMAGE} AS build
 
@@ -152,9 +149,6 @@ COPY --from=runtime-assets --chown=node:node /app/openclaw.mjs .
 COPY --from=runtime-assets --chown=node:node /app/extensions ./extensions
 COPY --from=runtime-assets --chown=node:node /app/skills ./skills
 COPY --from=runtime-assets --chown=node:node /app/docs ./docs
-COPY --from=caddy-binary /usr/bin/caddy /usr/bin/caddy
-COPY openclaw/Caddyfile /etc/caddy/Caddyfile
-COPY openclaw/docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 
 # In npm-installed Docker images, prefer the copied source extension tree for
 # bundled discovery so package metadata that points at source entries stays valid.
@@ -241,12 +235,8 @@ RUN --mount=type=cache,id=openclaw-bookworm-apt-cache,target=/var/cache/apt,shar
     fi
 
 RUN ln -sf /app/openclaw.mjs /usr/local/bin/openclaw && \
-  install -d -o node -g node /data /config /etc/caddy /tmp/caddy && \
-  chmod 755 /usr/local/bin/docker-entrypoint.sh /usr/bin/caddy /app/openclaw.mjs && \
-  chown -R node:node /data /config /etc/caddy /tmp/caddy
+  chmod 755 /app/openclaw.mjs
 
-ENV CADDY_HTTPS_PORT=8443
-ENV CADDY_SITE_ADDRESS=127.0.0.1
 ENV NODE_ENV=production
 
 # Security hardening: Run as non-root user
@@ -269,6 +259,4 @@ USER node
 HEALTHCHECK --interval=3m --timeout=10s --start-period=15s --retries=3 \
   CMD node -e "fetch('http://127.0.0.1:18789/healthz').then((r)=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
 
-EXPOSE 8443
-ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]
 CMD ["node", "openclaw.mjs", "gateway", "--allow-unconfigured"]

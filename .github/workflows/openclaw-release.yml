@@ -49,7 +49,7 @@ jobs:
           curl -fsSL "https://github.com/openclaw/openclaw/archive/refs/tags/v${{ github.event.inputs.openclawTag }}.tar.gz" \
             | tar -xz -C _src/openclaw --strip-components=1
           mkdir -p _src/openclaw/openclaw
-          cp openclaw/Dockerfile openclaw/Caddyfile openclaw/docker-entrypoint.sh _src/openclaw/openclaw/
+          cp openclaw/Dockerfile _src/openclaw/openclaw/
 
       - name: Build OpenClaw Image and Push
         uses: docker/build-push-action@v6
