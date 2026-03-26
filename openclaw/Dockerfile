@@ -182,13 +182,16 @@ RUN install -d -o node -g node /home/node/.local/bin && \
 # Install additional system packages needed by your skills or extensions.
 # The runtime already includes git and curl from the base package set.
 # Default extras focus on common media and CLI workflows.
-# Example: docker build --build-arg OPENCLAW_DOCKER_APT_PACKAGES="ffmpeg jq python3 python-is-python3 build-essential pkg-config" .
-ARG OPENCLAW_DOCKER_APT_PACKAGES="ffmpeg jq python3 python-is-python3"
+# Example: docker build --build-arg OPENCLAW_DOCKER_APT_PACKAGES="ffmpeg jq python3 python-is-python3 python3-pip build-essential pkg-config" .
+ARG OPENCLAW_DOCKER_APT_PACKAGES="ffmpeg jq python3 python-is-python3 python3-pip"
 RUN --mount=type=cache,id=openclaw-bookworm-apt-cache,target=/var/cache/apt,sharing=locked \
     --mount=type=cache,id=openclaw-bookworm-apt-lists,target=/var/lib/apt,sharing=locked \
     if [ -n "$OPENCLAW_DOCKER_APT_PACKAGES" ]; then \
       apt-get update && \
-      DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends $OPENCLAW_DOCKER_APT_PACKAGES; \
+      DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends $OPENCLAW_DOCKER_APT_PACKAGES && \
+      if command -v pip3 >/dev/null 2>&1 && ! command -v pip >/dev/null 2>&1; then \
+        ln -sf "$(command -v pip3)" /usr/local/bin/pip; \
+      fi; \
     fi
 
 # Optionally install Chromium and Xvfb for browser automation.
