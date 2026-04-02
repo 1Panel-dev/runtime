@@ -15,6 +15,7 @@
 ARG OPENCLAW_EXTENSIONS=""
 ARG OPENCLAW_VARIANT=default
 ARG OPENCLAW_BUNDLED_PLUGIN_DIR=extensions
+ARG OPENCLAW_EXCLUDE_BUNDLED_PLUGINS="qqbot feishu"
 ARG OPENCLAW_DOCKER_APT_UPGRADE=1
 ARG OPENCLAW_NODE_BOOKWORM_IMAGE="node:24-bookworm@sha256:3a09aa6354567619221ef6c45a5051b671f953f0a1924d1f819ffb236e520e6b"
 ARG OPENCLAW_NODE_BOOKWORM_DIGEST="sha256:3a09aa6354567619221ef6c45a5051b671f953f0a1924d1f819ffb236e520e6b"
@@ -101,7 +102,14 @@ RUN pnpm ui:build
 # Prune dev dependencies and strip build-only metadata before copying
 # runtime assets into the final image.
 FROM build AS runtime-assets
+ARG OPENCLAW_BUNDLED_PLUGIN_DIR
+ARG OPENCLAW_EXCLUDE_BUNDLED_PLUGINS
 RUN CI=true pnpm prune --prod && \
+    for plugin in $OPENCLAW_EXCLUDE_BUNDLED_PLUGINS; do \
+      if [ -n "$plugin" ]; then \
+        rm -rf "${OPENCLAW_BUNDLED_PLUGIN_DIR}/$plugin"; \
+      fi; \
+    done && \
     find dist -type f \( -name '*.d.ts' -o -name '*.d.mts' -o -name '*.d.cts' -o -name '*.map' \) -delete
 
 FROM ${OPENCLAW_NODE_BOOKWORM_IMAGE} AS base-default
