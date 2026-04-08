@@ -62,9 +62,10 @@ RUN corepack enable
 WORKDIR /app
 
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc ./
+COPY openclaw.mjs ./
 COPY ui/package.json ./ui/package.json
 COPY patches ./patches
-COPY scripts/postinstall-bundled-plugins.mjs scripts/npm-runner.mjs ./scripts/
+COPY scripts/postinstall-bundled-plugins.mjs scripts/npm-runner.mjs scripts/windows-cmd-helpers.mjs ./scripts/
 
 COPY --from=ext-deps /out/ ./${OPENCLAW_BUNDLED_PLUGIN_DIR}/
 
@@ -103,9 +104,15 @@ RUN pnpm qa:lab:build
 # Prune dev dependencies and strip build-only metadata before copying
 # runtime assets into the final image.
 FROM build AS runtime-assets
+ARG OPENCLAW_EXTENSIONS
 ARG OPENCLAW_BUNDLED_PLUGIN_DIR
 ARG OPENCLAW_EXCLUDE_BUNDLED_PLUGINS
-RUN CI=true pnpm prune --prod && \
+RUN printf 'packages:\n  - .\n  - ui\n' > /tmp/pnpm-workspace.runtime.yaml && \
+    for ext in $OPENCLAW_EXTENSIONS; do \
+      printf '  - %s/%s\n' "$OPENCLAW_BUNDLED_PLUGIN_DIR" "$ext" >> /tmp/pnpm-workspace.runtime.yaml; \
+    done && \
+    cp /tmp/pnpm-workspace.runtime.yaml pnpm-workspace.yaml && \
+    CI=true NPM_CONFIG_FROZEN_LOCKFILE=false pnpm prune --prod && \
     for plugin in $OPENCLAW_EXCLUDE_BUNDLED_PLUGINS; do \
       if [ -n "$plugin" ]; then \
         rm -rf "${OPENCLAW_BUNDLED_PLUGIN_DIR}/$plugin"; \
