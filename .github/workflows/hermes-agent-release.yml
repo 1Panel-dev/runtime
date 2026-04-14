@@ -1,0 +1,81 @@
+name: Build Hermes Agent Image
+
+on:
+  workflow_dispatch:
+    inputs:
+      hermesAgentTag:
+        description: "Hermes Agent release tag"
+        default: "0.9.0"
+        required: true
+      platforms:
+        description: "Platforms"
+        default: "linux/amd64,linux/arm64/v8"
+        required: true
+      pushLatest:
+        description: "Push latest tag"
+        default: "true"
+        required: true
+
+jobs:
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_PASSWORD }}
+
+      - name: Resolve Base Image
+        id: resolve
+        env:
+          REQUESTED_IMAGE: nousresearch/hermes-agent:${{ github.event.inputs.hermesAgentTag }}
+          FALLBACK_IMAGE: nousresearch/hermes-agent:latest
+        run: |
+          set -euo pipefail
+          if docker buildx imagetools inspect "${REQUESTED_IMAGE}" >/dev/null 2>&1; then
+            echo "base_image=${REQUESTED_IMAGE}" >> "${GITHUB_OUTPUT}"
+            echo "resolved_base_tag=${{ github.event.inputs.hermesAgentTag }}" >> "${GITHUB_OUTPUT}"
+          else
+            echo "Requested image not found, falling back to latest: ${REQUESTED_IMAGE}"
+            echo "base_image=${FALLBACK_IMAGE}" >> "${GITHUB_OUTPUT}"
+            echo "resolved_base_tag=latest" >> "${GITHUB_OUTPUT}"
+          fi
+
+      - name: Build Hermes Agent Image and Push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: hermes-agent/Dockerfile
+          platforms: ${{ github.event.inputs.platforms }}
+          push: true
+          build-args: |
+            BASE_IMAGE=${{ steps.resolve.outputs.base_image }}
+          tags: |
+            1panel/hermes-agent:${{ github.event.inputs.hermesAgentTag }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Push Latest Tag
+        if: ${{ github.event.inputs.pushLatest == 'true' }}
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: hermes-agent/Dockerfile
+          platforms: ${{ github.event.inputs.platforms }}
+          push: true
+          build-args: |
+            BASE_IMAGE=${{ steps.resolve.outputs.base_image }}
+          tags: |
+            1panel/hermes-agent:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
