@@ -22,12 +22,6 @@ RUN chmod 755 /usr/local/bin/1panel-hermes-entrypoint.sh && \
     gosu hermes /usr/local/bin/uv pip install \
       --python /opt/hermes/.venv/bin/python \
       --no-cache-dir \
-      aiohttp \
-      httpx \
-      cryptography \
-      dingtalk-stream \
-      lark-oapi \
-      websockets \
       qrcode
 
 WORKDIR /opt/data/workspace
