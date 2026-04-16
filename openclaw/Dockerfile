@@ -270,6 +270,7 @@ RUN ln -sf /app/openclaw.mjs /usr/local/bin/openclaw && \
   chmod 755 /usr/local/bin/docker-entrypoint.sh /app/openclaw.mjs
 
 ENV NODE_ENV=production
+ENV PLAYWRIGHT_BROWSERS_PATH=/home/node/.cache/ms-playwright
 
 # Security hardening: Run as non-root user
 # The node:24-bookworm image includes a 'node' user (uid 1000)
