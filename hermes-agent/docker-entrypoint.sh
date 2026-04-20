@@ -25,16 +25,7 @@ bootstrap_files() {
 }
 
 run_dashboard() {
-    local host port
-
-    host="${HERMES_DASHBOARD_HOST:-0.0.0.0}"
-    port="${HERMES_DASHBOARD_PORT:-9119}"
-
-    if [ "${HERMES_DASHBOARD_NO_OPEN:-1}" = "1" ]; then
-        hermes dashboard --host "$host" --port "$port" --no-open
-    else
-        hermes dashboard --host "$host" --port "$port"
-    fi
+    hermes dashboard --host 0.0.0.0 --port 9119 --no-open --insecure
 }
 
 run_both() {
@@ -87,7 +78,7 @@ if [ "$#" -gt 0 ]; then
     exec hermes "$@"
 fi
 
-case "${HERMES_RUN_MODE:-gateway}" in
+case "${HERMES_RUN_MODE:-both}" in
     gateway)
         exec hermes gateway run
         ;;
@@ -98,7 +89,7 @@ case "${HERMES_RUN_MODE:-gateway}" in
         run_both
         ;;
     *)
-        echo "Unsupported HERMES_RUN_MODE: ${HERMES_RUN_MODE:-gateway}" >&2
+        echo "Unsupported HERMES_RUN_MODE: ${HERMES_RUN_MODE:-both}" >&2
         echo "Supported values: gateway, dashboard, both" >&2
         exit 1
         ;;

@@ -9,10 +9,7 @@ LABEL org.opencontainers.image.source="https://github.com/1Panel-dev/runtime" \
 
 USER root
 
-ENV HERMES_RUN_MODE=gateway \
-    HERMES_DASHBOARD_HOST=0.0.0.0 \
-    HERMES_DASHBOARD_PORT=9119 \
-    HERMES_DASHBOARD_NO_OPEN=1 \
+ENV HERMES_RUN_MODE=both \
     VIRTUAL_ENV=/opt/hermes/.venv \
     PATH=/opt/hermes/.venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 
