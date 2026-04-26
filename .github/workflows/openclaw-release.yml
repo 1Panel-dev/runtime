@@ -23,60 +23,98 @@ on:
         default: "true"
         required: true
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+
 jobs:
   docker:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@v4
 
       - name: Login to Docker Hub
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_PASSWORD }}
+
+      - name: Resolve release metadata
+        id: meta
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          INPUT_OPENCLAW_TAG: ${{ github.event.inputs.openclawTag }}
+          INPUT_DOCKERHUB_TAG: ${{ github.event.inputs.dockerhubTag }}
+          INPUT_PLATFORMS: ${{ github.event.inputs.platforms }}
+          INPUT_PUSH_LATEST: ${{ github.event.inputs.pushLatest }}
+          REF_NAME: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+
+          if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
+            openclaw_tag="${INPUT_OPENCLAW_TAG}"
+            dockerhub_tag="${INPUT_DOCKERHUB_TAG:-$openclaw_tag}"
+            platforms="${INPUT_PLATFORMS:-linux/amd64,linux/arm64/v8}"
+            push_latest="${INPUT_PUSH_LATEST:-true}"
+          else
+            openclaw_tag="${REF_NAME#v}"
+            dockerhub_tag="$openclaw_tag"
+            platforms="linux/amd64,linux/arm64/v8"
+            push_latest="true"
+          fi
+
+          if [ -z "$openclaw_tag" ]; then
+            echo "::error::Failed to resolve OpenClaw tag"
+            exit 1
+          fi
+
+          {
+            echo "openclaw_tag=$openclaw_tag"
+            echo "dockerhub_tag=$dockerhub_tag"
+            echo "platforms=$platforms"
+            echo "push_latest=$push_latest"
+          } >> "$GITHUB_OUTPUT"
 
       - name: Download Source
         run: |
           set -euo pipefail
           mkdir -p _src/openclaw
-          curl -fsSL "https://github.com/openclaw/openclaw/archive/refs/tags/v${{ github.event.inputs.openclawTag }}.tar.gz" \
+          curl -fsSL "https://github.com/openclaw/openclaw/archive/refs/tags/v${{ steps.meta.outputs.openclaw_tag }}.tar.gz" \
             | tar -xz -C _src/openclaw --strip-components=1
           mkdir -p _src/openclaw/openclaw
           cp openclaw/Dockerfile openclaw/docker-entrypoint.sh _src/openclaw/openclaw/
 
       - name: Build OpenClaw Image and Push
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: _src/openclaw
           file: _src/openclaw/openclaw/Dockerfile
-          platforms: ${{ github.event.inputs.platforms || 'linux/amd64,linux/arm64/v8' }}
+          platforms: ${{ steps.meta.outputs.platforms }}
           push: true
           build-args: |
             OPENCLAW_INSTALL_BROWSER=true
-            OPENCLAW_VERSION=${{ github.event.inputs.openclawTag }}
           tags: |
-            1panel/openclaw:${{ github.event.inputs.dockerhubTag || github.event.inputs.openclawTag }}
+            1panel/openclaw:${{ steps.meta.outputs.dockerhub_tag }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
       - name: Push Latest Tag
-        if: ${{ github.event_name == 'push' || github.event.inputs.pushLatest == 'true' }}
-        uses: docker/build-push-action@v6
+        if: ${{ github.event_name == 'push' || steps.meta.outputs.push_latest == 'true' }}
+        uses: docker/build-push-action@v7
         with:
           context: _src/openclaw
           file: _src/openclaw/openclaw/Dockerfile
-          platforms: ${{ github.event.inputs.platforms || 'linux/amd64,linux/arm64/v8' }}
+          platforms: ${{ steps.meta.outputs.platforms }}
           push: true
           build-args: |
             OPENCLAW_INSTALL_BROWSER=true
-            OPENCLAW_VERSION=${{ github.event.inputs.openclawTag }}
           tags: |
             1panel/openclaw:latest
           cache-from: type=gha
