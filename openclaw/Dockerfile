@@ -197,7 +197,7 @@ RUN npm install -g clawhub@latest && \
     npm cache clean --force
 
 RUN install -d -o node -g node /home/node/.local/bin && \
-    su -s /bin/sh node -c 'curl -fsSL https://skillhub.cn/install/install.sh | bash -s -- --no-skills' && \
+    su -s /bin/sh node -c 'HOME=/home/node curl -fsSL https://skillhub.cn/install/install.sh | HOME=/home/node bash -s -- --no-skills' && \
     ln -sf /home/node/.local/bin/skillhub /usr/local/bin/skillhub && \
     chmod 755 /usr/local/bin/skillhub
 
