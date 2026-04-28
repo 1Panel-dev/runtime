@@ -196,11 +196,6 @@ RUN install -d -m 0755 "$COREPACK_HOME" && \
 RUN npm install -g clawhub@latest && \
     npm cache clean --force
 
-RUN install -d -o node -g node /home/node/.local/bin && \
-    su -s /bin/sh node -c 'HOME=/home/node curl -fsSL https://skillhub.cn/install/install.sh | HOME=/home/node bash -s -- --no-skills' && \
-    ln -sf /home/node/.local/bin/skillhub /usr/local/bin/skillhub && \
-    chmod 755 /usr/local/bin/skillhub
-
 # Install additional system packages needed by your skills or extensions.
 # The runtime already includes git and curl from the base package set.
 # Default extras focus on common media and CLI workflows.
@@ -215,6 +210,11 @@ RUN --mount=type=cache,id=openclaw-bookworm-apt-cache,target=/var/cache/apt,shar
         ln -sf "$(command -v pip3)" /usr/local/bin/pip; \
       fi; \
     fi
+
+RUN install -d -o node -g node /home/node/.local/bin && \
+    su -s /bin/sh node -c 'HOME=/home/node curl -fsSL https://skillhub.cn/install/install.sh | HOME=/home/node bash -s -- --no-skills' && \
+    ln -sf /home/node/.local/bin/skillhub /usr/local/bin/skillhub && \
+    chmod 755 /usr/local/bin/skillhub
 
 # Optionally install Chromium and Xvfb for browser automation.
 # Build with: docker build --build-arg OPENCLAW_INSTALL_BROWSER=1 ...
