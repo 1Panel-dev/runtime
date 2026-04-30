@@ -63,6 +63,7 @@ COPY openclaw.mjs ./
 COPY ui/package.json ./ui/package.json
 COPY patches ./patches
 COPY scripts/postinstall-bundled-plugins.mjs scripts/preinstall-package-manager-warning.mjs scripts/npm-runner.mjs scripts/windows-cmd-helpers.mjs ./scripts/
+COPY scripts/lib/package-dist-imports.mjs ./scripts/lib/package-dist-imports.mjs
 
 COPY --from=ext-deps /out/ ./${OPENCLAW_BUNDLED_PLUGIN_DIR}/
 
@@ -268,7 +269,9 @@ RUN ln -sf /app/openclaw.mjs /usr/local/bin/openclaw && \
   chmod 755 /usr/local/bin/docker-entrypoint.sh /app/openclaw.mjs
 
 RUN install -d -m 0700 -o node -g node /home/node/.openclaw && \
-  stat -c '%U:%G %a' /home/node/.openclaw | grep -qx 'node:node 700'
+  install -d -m 0700 -o node -g node /var/lib/openclaw/plugin-runtime-deps && \
+  stat -c '%U:%G %a' /home/node/.openclaw | grep -qx 'node:node 700' && \
+  stat -c '%U:%G %a' /var/lib/openclaw/plugin-runtime-deps | grep -qx 'node:node 700'
 
 ENV NODE_ENV=production
 ENV PLAYWRIGHT_BROWSERS_PATH=/home/node/.cache/ms-playwright
