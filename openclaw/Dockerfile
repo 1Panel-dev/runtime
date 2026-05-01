@@ -132,6 +132,7 @@ RUN printf 'packages:\n  - .\n  - ui\n' > /tmp/pnpm-workspace.runtime.yaml && \
     for plugin in $OPENCLAW_EXCLUDE_BUNDLED_PLUGINS; do \
       if [ -n "$plugin" ]; then \
         rm -rf "${OPENCLAW_BUNDLED_PLUGIN_DIR}/$plugin"; \
+        rm -rf "dist/${OPENCLAW_BUNDLED_PLUGIN_DIR}/$plugin"; \
       fi; \
     done && \
     find dist -type f \( -name '*.d.ts' -o -name '*.d.mts' -o -name '*.d.cts' -o -name '*.map' \) -delete && \
