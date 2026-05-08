@@ -16,7 +16,8 @@ ENV HERMES_DASHBOARD=1 \
     PATH=/opt/hermes/.venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 
 COPY hermes-agent/docker-entrypoint.sh /usr/local/bin/1panel-hermes-entrypoint.sh
-RUN chmod 755 /usr/local/bin/1panel-hermes-entrypoint.sh
+COPY hermes-agent/hermes-gateway-run.sh /usr/local/bin/1panel-hermes-gateway-run
+RUN chmod 755 /usr/local/bin/1panel-hermes-entrypoint.sh /usr/local/bin/1panel-hermes-gateway-run
 
 ENTRYPOINT ["/usr/local/bin/1panel-hermes-entrypoint.sh"]
-CMD ["bash", "-lc", "cd /opt/data/workspace && exec hermes gateway run"]
+CMD ["1panel-hermes-gateway-run"]
