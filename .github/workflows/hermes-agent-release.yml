@@ -5,7 +5,7 @@ on:
     inputs:
       hermesAgentTag:
         description: "Hermes Agent release tag"
-        default: "2026.4.13"
+        default: "2026.5.7"
         required: true
       platforms:
         description: "Platforms"
@@ -38,18 +38,30 @@ jobs:
       - name: Resolve Base Image
         id: resolve
         env:
-          REQUESTED_IMAGE: nousresearch/hermes-agent:${{ github.event.inputs.hermesAgentTag }}
+          HERMES_AGENT_TAG: ${{ github.event.inputs.hermesAgentTag }}
           FALLBACK_IMAGE: nousresearch/hermes-agent:latest
         run: |
           set -euo pipefail
-          if docker buildx imagetools inspect "${REQUESTED_IMAGE}" >/dev/null 2>&1; then
-            echo "base_image=${REQUESTED_IMAGE}" >> "${GITHUB_OUTPUT}"
-            echo "resolved_base_tag=${{ github.event.inputs.hermesAgentTag }}" >> "${GITHUB_OUTPUT}"
-          else
-            echo "Requested image not found, falling back to latest: ${REQUESTED_IMAGE}"
-            echo "base_image=${FALLBACK_IMAGE}" >> "${GITHUB_OUTPUT}"
-            echo "resolved_base_tag=latest" >> "${GITHUB_OUTPUT}"
-          fi
+
+          raw_tag="${HERMES_AGENT_TAG#v}"
+          candidates=(
+            "nousresearch/hermes-agent:${HERMES_AGENT_TAG}"
+            "nousresearch/hermes-agent:v${raw_tag}"
+          )
+
+          for image in "${candidates[@]}"; do
+            if docker buildx imagetools inspect "${image}" >/dev/null 2>&1; then
+              echo "base_image=${image}" >> "${GITHUB_OUTPUT}"
+              echo "image_tag=${raw_tag}" >> "${GITHUB_OUTPUT}"
+              echo "resolved_base_tag=${image##*:}" >> "${GITHUB_OUTPUT}"
+              exit 0
+            fi
+          done
+
+          echo "Requested image not found, falling back to latest: ${candidates[*]}"
+          echo "base_image=${FALLBACK_IMAGE}" >> "${GITHUB_OUTPUT}"
+          echo "image_tag=${raw_tag}" >> "${GITHUB_OUTPUT}"
+          echo "resolved_base_tag=latest" >> "${GITHUB_OUTPUT}"
 
       - name: Build Hermes Agent Image and Push
         uses: docker/build-push-action@v6
@@ -61,7 +73,7 @@ jobs:
           build-args: |
             BASE_IMAGE=${{ steps.resolve.outputs.base_image }}
           tags: |
-            1panel/hermes-agent:${{ github.event.inputs.hermesAgentTag }}
+            1panel/hermes-agent:${{ steps.resolve.outputs.image_tag }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
