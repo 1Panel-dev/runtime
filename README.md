@@ -9,6 +9,7 @@ Current images in this repository:
 - `1panel/openclaw`
 - `1panel/node`
 - `1panel/php`
+- `1panel/java`
 
 ## OpenClaw
 
@@ -31,3 +32,4 @@ Security is one of the main considerations for `1panel/openclaw`.
 
 - `1panel/node`: Node.js runtime image
 - `1panel/php`: PHP-FPM runtime images for multiple versions
+- `1panel/java`: Java JDK runtime images based on Eclipse Temurin

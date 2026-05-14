@@ -9,6 +9,7 @@
 - `1panel/openclaw`
 - `1panel/node`
 - `1panel/php`
+- `1panel/java`
 
 ## OpenClaw
 
@@ -30,3 +31,4 @@
 
 - `1panel/node`：Node.js 运行环境镜像
 - `1panel/php`：多个版本的 PHP-FPM 运行环境镜像
+- `1panel/java`：基于 Eclipse Temurin 的 Java JDK 运行环境镜像
