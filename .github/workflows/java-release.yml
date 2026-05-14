@@ -45,6 +45,6 @@ jobs:
             JAVA_VERSION=${{ github.event.inputs.javaVersion }}
             JAVA_VARIANT=${{ github.event.inputs.javaVariant }}
           tags: |
-            1panel/java:${{ github.event.inputs.javaVersion }}-jdk
+            1panel/java:${{ github.event.inputs.javaVersion }}
           cache-from: type=gha
           cache-to: type=gha,mode=max

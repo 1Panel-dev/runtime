@@ -35,7 +35,7 @@ grep -q 'context: java' "${workflow}"
 grep -q 'file: java/Dockerfile' "${workflow}"
 grep -q 'JAVA_VERSION=${{ github.event.inputs.javaVersion }}' "${workflow}"
 grep -q 'JAVA_VARIANT=${{ github.event.inputs.javaVariant }}' "${workflow}"
-grep -q '1panel/java:${{ github.event.inputs.javaVersion }}-jdk' "${workflow}"
+grep -q '1panel/java:${{ github.event.inputs.javaVersion }}' "${workflow}"
 
 grep -q '`1panel/java`' "${readme}"
 grep -q '`1panel/java`' "${readme_zh}"
