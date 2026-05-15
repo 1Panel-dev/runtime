@@ -10,10 +10,6 @@ on:
         default: "2026.5.12"
         description: "OpenClaw release and Docker Hub tag, for example 2026.5.12"
         required: true
-      platforms:
-        description: "Platforms"
-        default: "linux/amd64,linux/arm64/v8"
-        required: true
       pushLatest:
         description: "Push latest tag"
         default: "true"
@@ -21,33 +17,22 @@ on:
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+  IMAGE_NAME: 1panel/openclaw
 
 jobs:
-  docker:
-    runs-on: ubuntu-latest
+  resolve:
+    runs-on: ubuntu-24.04
+    outputs:
+      openclaw_tag: ${{ steps.meta.outputs.openclaw_tag }}
+      dockerhub_tag: ${{ steps.meta.outputs.dockerhub_tag }}
+      push_latest: ${{ steps.meta.outputs.push_latest }}
     steps:
-      - name: Checkout
-        uses: actions/checkout@v6
-
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v4
-
-      - name: Login to Docker Hub
-        uses: docker/login-action@v4
-        with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_PASSWORD }}
-
       - name: Resolve release metadata
         id: meta
         shell: bash
         env:
           EVENT_NAME: ${{ github.event_name }}
           INPUT_OPENCLAW_TAG: ${{ github.event.inputs.openclawTag }}
-          INPUT_PLATFORMS: ${{ github.event.inputs.platforms }}
           INPUT_PUSH_LATEST: ${{ github.event.inputs.pushLatest }}
           REF_NAME: ${{ github.ref_name }}
         run: |
@@ -55,13 +40,9 @@ jobs:
 
           if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
             openclaw_tag="${INPUT_OPENCLAW_TAG}"
-            dockerhub_tag="$openclaw_tag"
-            platforms="${INPUT_PLATFORMS:-linux/amd64,linux/arm64/v8}"
             push_latest="${INPUT_PUSH_LATEST:-true}"
           else
             openclaw_tag="${REF_NAME#v}"
-            dockerhub_tag="$openclaw_tag"
-            platforms="linux/amd64,linux/arm64/v8"
             push_latest="true"
           fi
 
@@ -72,16 +53,31 @@ jobs:
 
           {
             echo "openclaw_tag=$openclaw_tag"
-            echo "dockerhub_tag=$dockerhub_tag"
-            echo "platforms=$platforms"
+            echo "dockerhub_tag=$openclaw_tag"
             echo "push_latest=$push_latest"
           } >> "$GITHUB_OUTPUT"
+
+  build-amd64:
+    needs: resolve
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v4
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_PASSWORD }}
 
       - name: Download Source
         run: |
           set -euo pipefail
           mkdir -p _src/openclaw
-          curl -fsSL "https://github.com/openclaw/openclaw/archive/refs/tags/v${{ steps.meta.outputs.openclaw_tag }}.tar.gz" \
+          curl -fsSL "https://github.com/openclaw/openclaw/archive/refs/tags/v${{ needs.resolve.outputs.openclaw_tag }}.tar.gz" \
             | tar -xz -C _src/openclaw --strip-components=1
           test -d _src/openclaw/packages || { echo "::error::OpenClaw source is missing packages/. Check openclawTag matches this Dockerfile."; exit 1; }
           test -f _src/openclaw/scripts/prune-docker-plugin-dist.mjs || { echo "::error::OpenClaw source is missing scripts/prune-docker-plugin-dist.mjs. Check openclawTag matches this Dockerfile."; exit 1; }
@@ -89,31 +85,92 @@ jobs:
           mkdir -p _src/openclaw/openclaw
           cp openclaw/Dockerfile openclaw/docker-entrypoint.sh _src/openclaw/openclaw/
 
-      - name: Build OpenClaw Image and Push
+      - name: Build and push amd64 image
         uses: docker/build-push-action@v7
         with:
           context: _src/openclaw
           file: _src/openclaw/openclaw/Dockerfile
-          platforms: ${{ steps.meta.outputs.platforms }}
+          platforms: linux/amd64
           push: true
           build-args: |
             OPENCLAW_INSTALL_BROWSER=true
           tags: |
-            1panel/openclaw:${{ steps.meta.outputs.dockerhub_tag }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+            ${{ env.IMAGE_NAME }}:${{ needs.resolve.outputs.dockerhub_tag }}-amd64
+          cache-from: type=gha,scope=openclaw-amd64
+          cache-to: type=gha,mode=max,scope=openclaw-amd64
 
-      - name: Push Latest Tag
-        if: ${{ github.event_name == 'push' || steps.meta.outputs.push_latest == 'true' }}
+  build-arm64:
+    needs: resolve
+    runs-on: ubuntu-24.04-arm
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v4
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_PASSWORD }}
+
+      - name: Download Source
+        run: |
+          set -euo pipefail
+          mkdir -p _src/openclaw
+          curl -fsSL "https://github.com/openclaw/openclaw/archive/refs/tags/v${{ needs.resolve.outputs.openclaw_tag }}.tar.gz" \
+            | tar -xz -C _src/openclaw --strip-components=1
+          test -d _src/openclaw/packages || { echo "::error::OpenClaw source is missing packages/. Check openclawTag matches this Dockerfile."; exit 1; }
+          test -f _src/openclaw/scripts/prune-docker-plugin-dist.mjs || { echo "::error::OpenClaw source is missing scripts/prune-docker-plugin-dist.mjs. Check openclawTag matches this Dockerfile."; exit 1; }
+          test -d _src/openclaw/extensions/canvas/src/host || { echo "::error::OpenClaw source is missing extensions/canvas/src/host/. Check openclawTag matches this Dockerfile."; exit 1; }
+          mkdir -p _src/openclaw/openclaw
+          cp openclaw/Dockerfile openclaw/docker-entrypoint.sh _src/openclaw/openclaw/
+
+      - name: Build and push arm64 image
         uses: docker/build-push-action@v7
         with:
           context: _src/openclaw
           file: _src/openclaw/openclaw/Dockerfile
-          platforms: ${{ steps.meta.outputs.platforms }}
+          platforms: linux/arm64
           push: true
           build-args: |
             OPENCLAW_INSTALL_BROWSER=true
           tags: |
-            1panel/openclaw:latest
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+            ${{ env.IMAGE_NAME }}:${{ needs.resolve.outputs.dockerhub_tag }}-arm64
+          cache-from: type=gha,scope=openclaw-arm64
+          cache-to: type=gha,mode=max,scope=openclaw-arm64
+
+  create-manifest:
+    needs: [resolve, build-amd64, build-arm64]
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v4
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_PASSWORD }}
+
+      - name: Create and push multi-platform manifest
+        shell: bash
+        env:
+          IMAGE: ${{ env.IMAGE_NAME }}
+          TAG: ${{ needs.resolve.outputs.dockerhub_tag }}
+          PUSH_LATEST: ${{ needs.resolve.outputs.push_latest }}
+        run: |
+          set -euo pipefail
+
+          docker buildx imagetools create \
+            -t "${IMAGE}:${TAG}" \
+            "${IMAGE}:${TAG}-amd64" \
+            "${IMAGE}:${TAG}-arm64"
+
+          if [ "$PUSH_LATEST" = "true" ]; then
+            docker buildx imagetools create \
+              -t "${IMAGE}:latest" \
+              "${IMAGE}:${TAG}-amd64" \
+              "${IMAGE}:${TAG}-arm64"
+          fi
