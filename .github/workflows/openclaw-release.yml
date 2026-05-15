@@ -7,13 +7,9 @@ on:
   workflow_dispatch:
     inputs:
       openclawTag:
-        default: "2026.2.3"
-        description: "OpenClaw Release Tag 2026.2.3, etc."
+        default: "2026.5.12"
+        description: "OpenClaw release and Docker Hub tag, for example 2026.5.12"
         required: true
-      dockerhubTag:
-        default: "2026.2.3"
-        description: "Docker Hub Tag"
-        required: false
       platforms:
         description: "Platforms"
         default: "linux/amd64,linux/arm64/v8"
@@ -51,7 +47,6 @@ jobs:
         env:
           EVENT_NAME: ${{ github.event_name }}
           INPUT_OPENCLAW_TAG: ${{ github.event.inputs.openclawTag }}
-          INPUT_DOCKERHUB_TAG: ${{ github.event.inputs.dockerhubTag }}
           INPUT_PLATFORMS: ${{ github.event.inputs.platforms }}
           INPUT_PUSH_LATEST: ${{ github.event.inputs.pushLatest }}
           REF_NAME: ${{ github.ref_name }}
@@ -60,7 +55,7 @@ jobs:
 
           if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
             openclaw_tag="${INPUT_OPENCLAW_TAG}"
-            dockerhub_tag="${INPUT_DOCKERHUB_TAG:-$openclaw_tag}"
+            dockerhub_tag="$openclaw_tag"
             platforms="${INPUT_PLATFORMS:-linux/amd64,linux/arm64/v8}"
             push_latest="${INPUT_PUSH_LATEST:-true}"
           else
@@ -88,6 +83,9 @@ jobs:
           mkdir -p _src/openclaw
           curl -fsSL "https://github.com/openclaw/openclaw/archive/refs/tags/v${{ steps.meta.outputs.openclaw_tag }}.tar.gz" \
             | tar -xz -C _src/openclaw --strip-components=1
+          test -d _src/openclaw/packages || { echo "::error::OpenClaw source is missing packages/. Check openclawTag matches this Dockerfile."; exit 1; }
+          test -f _src/openclaw/scripts/prune-docker-plugin-dist.mjs || { echo "::error::OpenClaw source is missing scripts/prune-docker-plugin-dist.mjs. Check openclawTag matches this Dockerfile."; exit 1; }
+          test -d _src/openclaw/extensions/canvas/src/host || { echo "::error::OpenClaw source is missing extensions/canvas/src/host/. Check openclawTag matches this Dockerfile."; exit 1; }
           mkdir -p _src/openclaw/openclaw
           cp openclaw/Dockerfile openclaw/docker-entrypoint.sh _src/openclaw/openclaw/
 
