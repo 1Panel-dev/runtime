@@ -119,22 +119,19 @@ ENV OPENCLAW_PREFER_PNPM=1
 RUN pnpm_config_verify_deps_before_run=false pnpm ui:build
 RUN pnpm_config_verify_deps_before_run=false pnpm qa:lab:build
 
-# Reinstall production dependencies and strip build-only metadata before copying
+# Prune dev dependencies and strip build-only metadata before copying
 # runtime assets into the final image.
 FROM build AS runtime-assets
 ARG OPENCLAW_EXTENSIONS
 ARG OPENCLAW_BUNDLED_PLUGIN_DIR
 ARG OPENCLAW_EXCLUDE_BUNDLED_PLUGINS
-RUN --mount=type=cache,id=openclaw-pnpm-runtime-store,target=/root/.local/share/pnpm/store,sharing=locked \
-    echo "==> runtime-assets: install prod dependencies" && \
-    rm -rf node_modules && \
-    NODE_OPTIONS=--max-old-space-size=2048 pnpm install --prod --frozen-lockfile --ignore-scripts \
+RUN --mount=type=cache,id=openclaw-pnpm-store,target=/root/.local/share/pnpm/store,sharing=locked \
+    CI=true pnpm prune --prod \
+      --config.offline=true \
       --config.supportedArchitectures.os=linux \
       --config.supportedArchitectures.cpu="$(node -p 'process.arch')" \
       --config.supportedArchitectures.libc=glibc && \
-    echo "==> runtime-assets: refresh bundled plugin registry" && \
     node scripts/postinstall-bundled-plugins.mjs && \
-    echo "==> runtime-assets: prune non-selected plugin dist" && \
     OPENCLAW_EXTENSIONS="$OPENCLAW_EXTENSIONS" node scripts/prune-docker-plugin-dist.mjs && \
     for plugin in $OPENCLAW_EXCLUDE_BUNDLED_PLUGINS; do \
       if [ -n "$plugin" ]; then \
@@ -142,9 +139,7 @@ RUN --mount=type=cache,id=openclaw-pnpm-runtime-store,target=/root/.local/share/
         rm -rf "dist/${OPENCLAW_BUNDLED_PLUGIN_DIR}/$plugin"; \
       fi; \
     done && \
-    echo "==> runtime-assets: remove dist type and sourcemap files" && \
     find dist -type f \( -name '*.d.ts' -o -name '*.d.mts' -o -name '*.d.cts' -o -name '*.map' \) -delete && \
-    echo "==> runtime-assets: check package dist imports" && \
     node scripts/check-package-dist-imports.mjs /app
 
 FROM ${OPENCLAW_NODE_BOOKWORM_SLIM_IMAGE} AS base-runtime
@@ -213,13 +208,16 @@ RUN npm install -g clawhub@latest && \
 # Install additional system packages needed by your skills or extensions.
 # The runtime already includes git and curl from the base package set.
 # Default extras focus on common media and CLI workflows.
-# Example: docker build --build-arg OPENCLAW_DOCKER_APT_PACKAGES="ffmpeg jq openssh-client python-is-python3 python3-pip build-essential pkg-config" .
+# Example: docker build --build-arg OPENCLAW_IMAGE_APT_PACKAGES="ffmpeg jq openssh-client python-is-python3 python3-pip build-essential pkg-config" .
+# Legacy alias: OPENCLAW_DOCKER_APT_PACKAGES is still accepted as a fallback.
+ARG OPENCLAW_IMAGE_APT_PACKAGES
 ARG OPENCLAW_DOCKER_APT_PACKAGES="ffmpeg jq openssh-client python-is-python3 python3-pip"
 RUN --mount=type=cache,id=openclaw-bookworm-apt-cache,target=/var/cache/apt,sharing=locked \
     --mount=type=cache,id=openclaw-bookworm-apt-lists,target=/var/lib/apt,sharing=locked \
-    if [ -n "$OPENCLAW_DOCKER_APT_PACKAGES" ]; then \
+    packages="${OPENCLAW_IMAGE_APT_PACKAGES-$OPENCLAW_DOCKER_APT_PACKAGES}"; \
+    if [ -n "$packages" ]; then \
       apt-get update && \
-      DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends $OPENCLAW_DOCKER_APT_PACKAGES && \
+      DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends $packages && \
       if command -v pip3 >/dev/null 2>&1 && ! command -v pip >/dev/null 2>&1; then \
         ln -sf "$(command -v pip3)" /usr/local/bin/pip; \
       fi; \
