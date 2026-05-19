@@ -224,7 +224,19 @@ RUN --mount=type=cache,id=openclaw-bookworm-apt-cache,target=/var/cache/apt,shar
     fi
 
 RUN install -d -o node -g node /home/node/.local/bin && \
-    su -s /bin/sh node -c 'HOME=/home/node curl -fsSL https://skillhub.cn/install/install.sh | HOME=/home/node bash -s -- --no-skills' && \
+    for attempt in 1 2 3 4 5; do \
+      if curl -fsSL --connect-timeout 20 --retry 5 --retry-delay 3 --retry-all-errors \
+        https://skillhub.cn/install/install.sh -o /tmp/skillhub-install.sh; then \
+        break; \
+      fi; \
+      if [ "$attempt" -eq 5 ]; then \
+        exit 1; \
+      fi; \
+      sleep $((attempt * 5)); \
+    done && \
+    chmod 755 /tmp/skillhub-install.sh && \
+    su -s /bin/sh node -c 'HOME=/home/node bash /tmp/skillhub-install.sh --no-skills' && \
+    rm -f /tmp/skillhub-install.sh && \
     ln -sf /home/node/.local/bin/skillhub /usr/local/bin/skillhub && \
     chmod 755 /usr/local/bin/skillhub
 
