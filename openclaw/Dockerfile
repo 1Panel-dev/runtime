@@ -74,7 +74,8 @@ RUN --mount=type=cache,id=openclaw-pnpm-store,target=/root/.local/share/pnpm/sto
     NODE_OPTIONS=--max-old-space-size=2048 pnpm install --frozen-lockfile \
       --config.supportedArchitectures.os=linux \
       --config.supportedArchitectures.cpu="$(node -p 'process.arch')" \
-      --config.supportedArchitectures.libc=glibc
+      --config.supportedArchitectures.libc=glibc && \
+    pnpm store add source-map@0.6.1
 
 # pnpm v10+ may append peer-resolution hashes to virtual-store folder names; do not hardcode `.pnpm/...`
 # paths. Matrix's native downloader can hit transient release CDN errors while
@@ -207,19 +208,29 @@ RUN npm install -g clawhub@latest && \
 # Install additional system packages needed by your skills or extensions.
 # The runtime already includes git and curl from the base package set.
 # Default extras focus on common media and CLI workflows.
-# Example: docker build --build-arg OPENCLAW_IMAGE_APT_PACKAGES="ffmpeg jq openssh-client python-is-python3 python3-pip build-essential pkg-config" .
+# Example: docker build --build-arg OPENCLAW_IMAGE_APT_PACKAGES="ffmpeg jq openssh-client build-essential pkg-config" .
 # Legacy alias: OPENCLAW_DOCKER_APT_PACKAGES is still accepted as a fallback.
 ARG OPENCLAW_IMAGE_APT_PACKAGES
-ARG OPENCLAW_DOCKER_APT_PACKAGES="ffmpeg jq openssh-client python-is-python3 python3-pip"
+ARG OPENCLAW_DOCKER_APT_PACKAGES="ffmpeg jq openssh-client"
 RUN --mount=type=cache,id=openclaw-bookworm-apt-cache,target=/var/cache/apt,sharing=locked \
     --mount=type=cache,id=openclaw-bookworm-apt-lists,target=/var/lib/apt,sharing=locked \
     packages="${OPENCLAW_IMAGE_APT_PACKAGES-$OPENCLAW_DOCKER_APT_PACKAGES}"; \
     if [ -n "$packages" ]; then \
       apt-get update && \
-      DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends $packages && \
-      if command -v pip3 >/dev/null 2>&1 && ! command -v pip >/dev/null 2>&1; then \
-        ln -sf "$(command -v pip3)" /usr/local/bin/pip; \
-      fi; \
+      DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends $packages; \
+    fi
+
+# Install additional Python packages needed by your plugins or skills.
+# Example: docker build --build-arg OPENCLAW_IMAGE_PIP_PACKAGES="requests humanize" .
+ARG OPENCLAW_IMAGE_PIP_PACKAGES=""
+RUN --mount=type=cache,id=openclaw-bookworm-apt-cache,target=/var/cache/apt,sharing=locked \
+    --mount=type=cache,id=openclaw-bookworm-apt-lists,target=/var/lib/apt,sharing=locked \
+    if [ -n "$OPENCLAW_IMAGE_PIP_PACKAGES" ]; then \
+      if ! python3 -m pip --version >/dev/null 2>&1; then \
+        apt-get update && \
+        DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends python3-pip; \
+      fi && \
+      python3 -m pip install --no-cache-dir --break-system-packages $OPENCLAW_IMAGE_PIP_PACKAGES; \
     fi
 
 RUN install -d -o node -g node /home/node/.local/bin && \
