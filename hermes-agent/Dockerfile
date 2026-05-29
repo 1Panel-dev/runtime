@@ -15,8 +15,7 @@ ENV HERMES_DASHBOARD=1 \
     VIRTUAL_ENV=/opt/hermes/.venv \
     PATH=/opt/hermes/.venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 
-COPY hermes-agent/1panel-banner.sh /etc/cont-init.d/00-1panel-banner
 COPY hermes-agent/hermes-gateway-run.sh /usr/local/bin/1panel-hermes-gateway-run
-RUN chmod 755 /etc/cont-init.d/00-1panel-banner /usr/local/bin/1panel-hermes-gateway-run
+RUN chmod 755 /usr/local/bin/1panel-hermes-gateway-run
 
 CMD ["1panel-hermes-gateway-run"]
