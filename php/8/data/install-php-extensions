@@ -21,9 +21,9 @@ if ! which docker-php-ext-configure >/dev/null || ! which docker-php-ext-enable 
 	exit 1
 fi
 
-IPE_VERSION=2.10.7
+IPE_VERSION=2.11.9
 
-	printf 'install-php-extensions v.%s\n' "$IPE_VERSION"
+printf 'install-php-extensions v.%s\n' "$IPE_VERSION"
 
 # Reset the Internal Field Separator
 resetIFS() {
@@ -660,23 +660,60 @@ buildRequiredPackageLists() {
 			invokeAptGetUpdate
 			;;
 	esac
+	buildRequiredPackageLists_sslTextVersion="$(php -d display_errors=stderr -r 'echo defined("OPENSSL_VERSION_TEXT") ? OPENSSL_VERSION_TEXT : "";' 2>/dev/null)"
+	if test $? -ne 0 || test -z "$buildRequiredPackageLists_sslTextVersion"; then
+		printf 'Unable to determine the version of the SSL library\n' >&2
+		exit 1
+	fi
+	case "$buildRequiredPackageLists_sslTextVersion" in
+		OpenSSL\ *)
+			buildRequiredPackageLists_sslLib=openssl
+			buildRequiredPackageLists_sslMajorVersion="$(php -d display_errors=stderr -r 'echo defined("OPENSSL_VERSION_NUMBER") ? (OPENSSL_VERSION_NUMBER >> 28) : "";' 2>/dev/null)"
+			if test $? -ne 0 || test -z "$buildRequiredPackageLists_sslMajorVersion"; then
+				printf 'Unable to determine the major version of the SSL library\n' >&2
+				exit 1
+			fi
+			buildRequiredPackageLists_sslMajorMinorVersion="$(php -d display_errors=stderr -r 'echo defined("OPENSSL_VERSION_NUMBER") ? ((OPENSSL_VERSION_NUMBER >> 28) . "." . ((OPENSSL_VERSION_NUMBER >> 20) & 0xFF)) : "";' 2>/dev/null)"
+			if test $? -ne 0 || test -z "$buildRequiredPackageLists_sslMajorMinorVersion"; then
+				printf 'Unable to determine the major.minor version of the SSL library\n' >&2
+				exit 1
+			fi
+			;;
+		LibreSSL\ *)
+			buildRequiredPackageLists_sslLib=libressl
+			buildRequiredPackageLists_sslMajorVersion="${buildRequiredPackageLists_sslTextVersion#LibreSSL }"
+			buildRequiredPackageLists_sslMajorVersion="${buildRequiredPackageLists_sslMajorVersion%%.*}"
+			buildRequiredPackageLists_sslMajorMinorVersion="${buildRequiredPackageLists_sslTextVersion#LibreSSL }"
+			buildRequiredPackageLists_sslMajorMinorVersion="${buildRequiredPackageLists_sslMajorMinorVersion%.*}"
+			;;
+		*)
+			printf 'Unrecognized SSL library: %s\n' "$buildRequiredPackageLists_sslTextVersion" >&2
+			exit 1
+			;;
+	esac
 	case "$DISTRO_VERSION" in
 		alpine@*)
 			if test $# -gt 1 || test "${1:-}" != '@composer'; then
 				buildRequiredPackageLists_volatile="$buildRequiredPackageLists_volatile $PHPIZE_DEPS"
 			fi
-			buildRequiredPackageLists_sslMajorVersion="$(php -d display_errors=stderr -r 'echo defined("OPENSSL_VERSION_NUMBER") ? (OPENSSL_VERSION_NUMBER >> 28) : "";' 2>/dev/null)"
-			buildRequiredPackageLists_sslMajorMinorVersion="$(php -d display_errors=stderr -r 'echo defined("OPENSSL_VERSION_NUMBER") ? ((OPENSSL_VERSION_NUMBER >> 28) . "." . ((OPENSSL_VERSION_NUMBER >> 20) & 0xFF)) : "";' 2>/dev/null)"
-			if test -z "$buildRequiredPackageLists_sslMajorVersion" || test -z "$buildRequiredPackageLists_sslMajorMinorVersion"; then
-				printf 'Unable to determine the version of OpenSSL\n' >&2
-				exit 1
-			fi
-			if test $buildRequiredPackageLists_sslMajorVersion -le 1; then
-				buildRequiredPackageLists_libssl="libssl$buildRequiredPackageLists_sslMajorMinorVersion"
-			else
-				buildRequiredPackageLists_libssl="libssl$buildRequiredPackageLists_sslMajorVersion"
-			fi
-			buildRequiredPackageLists_libssldev='openssl-dev'
+			case "$buildRequiredPackageLists_sslLib" in
+				openssl)
+					if test $buildRequiredPackageLists_sslMajorVersion -le 1; then
+						buildRequiredPackageLists_libssl="libssl$buildRequiredPackageLists_sslMajorMinorVersion"
+					else
+						buildRequiredPackageLists_libssl="libssl$buildRequiredPackageLists_sslMajorVersion"
+					fi
+					buildRequiredPackageLists_libssldev='openssl-dev'
+					;;
+				libressl)
+					buildRequiredPackageLists_libssl="libressl$buildRequiredPackageLists_sslMajorMinorVersion-libssl"
+					buildRequiredPackageLists_libssldev='libressl-dev'
+					;;
+				*)
+					printf 'Unsupported SSL library for Alpine: %s\n' "$buildRequiredPackageLists_sslLib" >&2
+					exit 1
+					;;
+			esac
 			buildRequiredPackageLists_icuPersistent=''
 			if test $DISTRO_MAJMIN_VERSION -ge 316; then
 				case "${IPE_ICU_EN_ONLY:-}" in
@@ -686,24 +723,36 @@ buildRequiredPackageLists() {
 						;;
 				esac
 			fi
+			buildRequiredPackageLists_libpcredev=pcre-dev
 			;;
 		debian@*)
-			buildRequiredPackageLists_sslMajorVersion="$(php -d display_errors=stderr -r 'echo defined("OPENSSL_VERSION_NUMBER") ? (OPENSSL_VERSION_NUMBER >> 28) : "";' 2>/dev/null)"
-			buildRequiredPackageLists_sslMajorMinorVersion="$(php -d display_errors=stderr -r 'echo defined("OPENSSL_VERSION_NUMBER") ? ((OPENSSL_VERSION_NUMBER >> 28) . "." . ((OPENSSL_VERSION_NUMBER >> 20) & 0xFF)) : "";' 2>/dev/null)"
-			if test -z "$buildRequiredPackageLists_sslMajorVersion" || test -z "$buildRequiredPackageLists_sslMajorMinorVersion"; then
-				printf 'Unable to determine the version of OpenSSL\n' >&2
-				exit 1
-			fi
-			if test $buildRequiredPackageLists_sslMajorVersion -le 1; then
-				buildRequiredPackageLists_libssl="libssl$buildRequiredPackageLists_sslMajorMinorVersion"
-				if test $DISTRO_VERSION_NUMBER -eq 9 && test "$buildRequiredPackageLists_sslMajorMinorVersion" = '1.0'; then
-					buildRequiredPackageLists_libssldev="libssl$buildRequiredPackageLists_sslMajorMinorVersion-dev"
-				else
-					buildRequiredPackageLists_libssldev="libssl-dev"
-				fi
+			case "$buildRequiredPackageLists_sslLib" in
+				openssl)
+					if test $buildRequiredPackageLists_sslMajorVersion -le 1; then
+						buildRequiredPackageLists_libssl="libssl$buildRequiredPackageLists_sslMajorMinorVersion"
+						if test $DISTRO_VERSION_NUMBER -eq 9 && test "$buildRequiredPackageLists_sslMajorMinorVersion" = '1.0'; then
+							buildRequiredPackageLists_libssldev="libssl$buildRequiredPackageLists_sslMajorMinorVersion-dev"
+						else
+							buildRequiredPackageLists_libssldev="libssl-dev"
+						fi
+					else
+						if test $DISTRO_VERSION_NUMBER -ge 13; then
+							buildRequiredPackageLists_libssl="^libssl${buildRequiredPackageLists_sslMajorVersion}(t64)?\$"
+						else
+							buildRequiredPackageLists_libssl="libssl$buildRequiredPackageLists_sslMajorVersion"
+						fi
+						buildRequiredPackageLists_libssldev="libssl-dev"
+					fi
+					;;
+				*)
+					printf 'Unsupported SSL library for Debian: %s\n' "$buildRequiredPackageLists_sslLib" >&2
+					exit 1
+					;;
+			esac
+			if test $DISTRO_VERSION_NUMBER -ge 13; then
+				buildRequiredPackageLists_libpcredev=libpcre2-dev
 			else
-				buildRequiredPackageLists_libssl="libssl$buildRequiredPackageLists_sslMajorVersion"
-				buildRequiredPackageLists_libssldev="libssl-dev"
+				buildRequiredPackageLists_libpcredev=libpcre3-dev
 			fi
 			;;
 	esac
@@ -745,11 +794,15 @@ buildRequiredPackageLists() {
 				;;
 			ddtrace@alpine)
 				buildRequiredPackageLists_persistent="$buildRequiredPackageLists_persistent libgcc"
-				buildRequiredPackageLists_volatile="$buildRequiredPackageLists_volatile curl-dev"
+				if test $PHP_MAJMIN_VERSION -lt 700; then
+					buildRequiredPackageLists_volatile="$buildRequiredPackageLists_volatile curl-dev automake libtool"
+				fi
 				;;
 			ddtrace@debian)
-				buildRequiredPackageLists_persistent="$buildRequiredPackageLists_persistent $buildRequiredPackageLists_libssl"
-				buildRequiredPackageLists_volatile="$buildRequiredPackageLists_volatile libcurl4-openssl-dev"
+				if test $PHP_MAJMIN_VERSION -lt 700; then
+					buildRequiredPackageLists_persistent="$buildRequiredPackageLists_persistent $buildRequiredPackageLists_libssl"
+					buildRequiredPackageLists_volatile="$buildRequiredPackageLists_volatile libcurl4-openssl-dev automake libtool"
+				fi
 				;;
 			dba@alpine)
 				buildRequiredPackageLists_persistent="$buildRequiredPackageLists_persistent db"
@@ -997,7 +1050,7 @@ buildRequiredPackageLists() {
 				;;
 			imagick@debian)
 				if test $DISTRO_VERSION_NUMBER -ge 13; then
-					buildRequiredPackageLists_persistent="$buildRequiredPackageLists_persistent ^libmagickwand-7.q16-[0-9]+$ ^libmagickcore-7.q16-[0-9]+-extra$"
+					buildRequiredPackageLists_persistent="$buildRequiredPackageLists_persistent ^libmagickwand-7.q16-[0-9]+$ ^libmagickcore-7.q16-[0-9]+-extra$ libheif-plugin-aomenc"
 				else
 					buildRequiredPackageLists_persistent="$buildRequiredPackageLists_persistent ^libmagickwand-6.q16-[0-9]+$ ^libmagickcore-6.q16-[0-9]+-extra$"
 				fi
@@ -1195,16 +1248,12 @@ buildRequiredPackageLists() {
 				;;
 			oauth@alpine)
 				if test $PHP_MAJMIN_VERSION -ge 700; then
-					buildRequiredPackageLists_volatile="$buildRequiredPackageLists_volatile pcre-dev"
+					buildRequiredPackageLists_volatile="$buildRequiredPackageLists_volatile $buildRequiredPackageLists_libpcredev"
 				fi
 				;;
 			oauth@debian)
 				if test $PHP_MAJMIN_VERSION -ge 700; then
-					if test $DISTRO_VERSION_NUMBER -ge 13; then
-						buildRequiredPackageLists_volatile="$buildRequiredPackageLists_volatile libpcre2-dev"
-					else
-						buildRequiredPackageLists_volatile="$buildRequiredPackageLists_volatile libpcre3-dev"
-					fi
+					buildRequiredPackageLists_volatile="$buildRequiredPackageLists_volatile $buildRequiredPackageLists_libpcredev"
 				fi
 				;;
 			oci8@alpine | pdo_oci@alpine)
@@ -1368,6 +1417,14 @@ buildRequiredPackageLists() {
 					buildRequiredPackageLists_volatile="$buildRequiredPackageLists_volatile liblz4-dev"
 				fi
 				;;
+			rrd@alpine)
+				buildRequiredPackageLists_persistent="$buildRequiredPackageLists_persistent librrd"
+				buildRequiredPackageLists_volatile="$buildRequiredPackageLists_volatile rrdtool-dev"
+				;;
+			rrd@debian)
+				buildRequiredPackageLists_volatile="$buildRequiredPackageLists_volatile librrd-dev"
+				buildRequiredPackageLists_persistent="$buildRequiredPackageLists_persistent ^librrd[0-9]*$"
+				;;
 			relay@alpine)
 				buildRequiredPackageLists_persistent="$buildRequiredPackageLists_persistent lz4-libs zstd-libs"
 				if test $DISTRO_MAJMIN_VERSION -ge 317; then
@@ -1378,7 +1435,7 @@ buildRequiredPackageLists() {
 				buildRequiredPackageLists_persistent="$buildRequiredPackageLists_persistent libstdc++"
 				;;
 			saxon@debian)
-				buildRequiredPackageLists_persistent="$buildRequiredPackageLists_volatile unzip"
+				buildRequiredPackageLists_volatile="$buildRequiredPackageLists_volatile unzip"
 				;;
 			seasclick@alpine)
 				buildRequiredPackageLists_persistent="$buildRequiredPackageLists_persistent libstdc++"
@@ -1412,14 +1469,10 @@ buildRequiredPackageLists() {
 				;;
 			snuffleupagus@alpine)
 				buildRequiredPackageLists_persistent="$buildRequiredPackageLists_persistent pcre"
-				buildRequiredPackageLists_volatile="$buildRequiredPackageLists_volatile pcre-dev"
+				buildRequiredPackageLists_volatile="$buildRequiredPackageLists_volatile $buildRequiredPackageLists_libpcredev"
 				;;
 			snuffleupagus@debian)
-				if test $DISTRO_VERSION_NUMBER -ge 13; then
-					buildRequiredPackageLists_volatile="$buildRequiredPackageLists_volatile libpcre2-dev"
-				else
-					buildRequiredPackageLists_volatile="$buildRequiredPackageLists_volatile libpcre3-dev"
-				fi
+				buildRequiredPackageLists_volatile="$buildRequiredPackageLists_volatile $buildRequiredPackageLists_libpcredev"
 				;;
 			soap@alpine)
 				buildRequiredPackageLists_volatile="$buildRequiredPackageLists_volatile libxml2-dev"
@@ -1477,6 +1530,14 @@ buildRequiredPackageLists() {
 				;;
 			ssh2@debian)
 				buildRequiredPackageLists_volatile="$buildRequiredPackageLists_volatile libssh2-1-dev"
+				;;
+			statgrab@alpine)
+				buildRequiredPackageLists_persistent="$buildRequiredPackageLists_persistent libstatgrab"
+				buildRequiredPackageLists_volatile="$buildRequiredPackageLists_volatile libstatgrab-dev"
+				;;
+			statgrab@debian)
+				buildRequiredPackageLists_persistent="$buildRequiredPackageLists_persistent ^libstatgrab[0-9]*$"
+				buildRequiredPackageLists_volatile="$buildRequiredPackageLists_volatile libstatgrab-dev"
 				;;
 			stomp@alpine)
 				buildRequiredPackageLists_persistent="$buildRequiredPackageLists_persistent $buildRequiredPackageLists_libssl"
@@ -1634,6 +1695,14 @@ buildRequiredPackageLists() {
 			uv@debian)
 				buildRequiredPackageLists_persistent="$buildRequiredPackageLists_persistent libuv1"
 				buildRequiredPackageLists_volatile="$buildRequiredPackageLists_volatile libuv1-dev"
+				;;
+			v8js@alpine)
+				buildRequiredPackageLists_persistent="$buildRequiredPackageLists_persistent libstdc++ nodejs-libs"
+				buildRequiredPackageLists_volatile="$buildRequiredPackageLists_volatile nodejs-dev"
+				;;
+			v8js@debian)
+				buildRequiredPackageLists_persistent="$buildRequiredPackageLists_persistent ^libnode[0-9]+$"
+				buildRequiredPackageLists_volatile="$buildRequiredPackageLists_volatile libnode-dev"
 				;;
 			vips@alpine)
 				buildRequiredPackageLists_persistent="$buildRequiredPackageLists_persistent vips"
@@ -2302,8 +2371,10 @@ installMicrosoftSqlServerODBC() {
 			printf -- '- installing the APT package\n'
 			if test $PHP_MAJMIN_VERSION -le 703; then
 				ACCEPT_EULA=Y apt-get install -qqy --no-install-recommends msodbcsql17
-			elif test $DISTRO_VERSION_NUMBER -ge 9 && test $DISTRO_VERSION_NUMBER -le 12; then
-				# On Debian 9 to 12 we have both msodbcsql17 and msodbcsql18: let's install just one
+			elif test $DISTRO_VERSION_NUMBER -ge 9 && test $DISTRO_VERSION_NUMBER -le 13; then
+				# On Debian 9 to 13 we have both msodbcsql17 and msodbcsql18: let's install just one
+				# see https://packages.microsoft.com/debian/9/prod/pool/main/m/
+				# see https://packages.microsoft.com/debian/13/prod/pool/main/m/
 				ACCEPT_EULA=Y apt-get install -qqy --no-install-recommends msodbcsql18
 			else
 				ACCEPT_EULA=Y apt-get install -qqy --no-install-recommends '^msodbcsql[0-9]+$'
@@ -2424,7 +2495,9 @@ installLibavif() {
 
 # Install libmpdec
 installLibMPDec() {
-	installLibMPDec_src="$(getPackageSource https://www.bytereef.org/software/mpdecimal/releases/mpdecimal-2.5.1.tar.gz)"
+	installLibMPDec_version=4.0.1
+	printf '# Installing libmpdec v%s\n' "$installLibMPDec_version"
+	installLibMPDec_src="$(getPackageSource https://www.bytereef.org/software/mpdecimal/releases/mpdecimal-$installLibMPDec_version.tar.gz)"
 	cd -- "$installLibMPDec_src"
 	./configure --disable-cxx
 	make -j$(getProcessorCount)
@@ -2887,6 +2960,39 @@ You may need to:
 EOT
 }
 
+# Install the Datadog PHP tracer
+#
+# Arguments:
+#   $1: the version to be installed (optional)
+installDDTrace() {
+	printf '# Installing ddtrace\n'
+	installDDTrace_version="${1:-}"
+	if test -z "$installDDTrace_version"; then
+		installDDTrace_url='https://github.com/DataDog/dd-trace-php/releases/latest/download/datadog-setup.php'
+	else
+		installDDTrace_url="https://github.com/DataDog/dd-trace-php/releases/download/$installDDTrace_version/datadog-setup.php"
+	fi
+	installDDTrace_setup="$(mktemp -p /tmp/src)"
+	printf 'Downloading datadog-setup.php from %s\n' "$installDDTrace_url"
+	if ! curl $IPE_CURL_FLAGS -sSLf -o "$installDDTrace_setup" "$installDDTrace_url"; then
+		printf 'Failed to download %s\n' "$installDDTrace_url" >&2
+		exit 1
+	fi
+	installDDTrace_args='--php-bin=php'
+	case "${IPE_DD_APPSEC:-}" in
+		1 | y* | Y*)
+			installDDTrace_args="$installDDTrace_args --enable-appsec"
+			;;
+	esac
+	case "${IPE_DD_PROFILING:-}" in
+		1 | y* | Y*)
+			installDDTrace_args="$installDDTrace_args --enable-profiling"
+			;;
+	esac
+	php "$installDDTrace_setup" $installDDTrace_args
+	rm -f "$installDDTrace_setup"
+}
+
 # Compile the libraries specified in the COMPILE_LIBS variable
 compileLibs() {
 	if stringInList libaom "$COMPILE_LIBS"; then
@@ -3293,9 +3399,14 @@ installRemoteModule() {
 					;;
 			esac
 			installRemoteModule_tmp2=$(php -r 'echo PHP_MAJOR_VERSION . PHP_MINOR_VERSION . (ZEND_THREAD_SAFE ? "-zts" : "");')
+			if test -z "$installRemoteModule_version"; then
+				installRemoteModule_url="https://blackfire.io/api/v1/releases/probe/php/$installRemoteModule_distro/$installRemoteModule_tmp1/$installRemoteModule_tmp2"
+			else
+				installRemoteModule_url="https://packages.blackfire.io/binaries/blackfire-php/$installRemoteModule_version/blackfire-php-${installRemoteModule_distro}_${installRemoteModule_tmp1}-php-${installRemoteModule_tmp2}.tar.gz"
+			fi
 			installRemoteModule_tmp="$(mktemp -p /tmp/src -d)"
 			cd "$installRemoteModule_tmp"
-			curl $IPE_CURL_FLAGS -sSLf --user-agent Docker https://blackfire.io/api/v1/releases/probe/php/$installRemoteModule_distro/$installRemoteModule_tmp1/$installRemoteModule_tmp2 | tar xz
+			curl $IPE_CURL_FLAGS -sSLf --user-agent Docker "$installRemoteModule_url" | tar xz
 			mv blackfire-*.so $(getPHPExtensionsDir)/blackfire.so
 			cd - >/dev/null
 			installRemoteModule_manuallyInstalled=1
@@ -3360,25 +3471,24 @@ installRemoteModule() {
 			fi
 			;;
 		ddtrace)
-			if test -z "$installRemoteModule_version"; then
-				if test $PHP_MAJMIN_VERSION -lt 700; then
-					installRemoteModule_version=0.75.0
-				fi
-				if test -z "$installRemoteModule_version"; then
-					case "$DISTRO" in
-						alpine)
-							if test $DISTRO_MAJMIN_VERSION -le 312; then
-								# cc is not supported due to a memcmp related bug
-								installRemoteModule_version=1.1.0
-							fi
-							;;
-					esac
-				fi
-			else
+			if test -n "$installRemoteModule_version"; then
 				installRemoteModule_version="$(resolvePeclStabilityVersion "$installRemoteModule_module" "$installRemoteModule_version")"
 			fi
-			if test -z "$installRemoteModule_version" || test $(compareVersions "$installRemoteModule_version" 0.75.0) -ge 0; then
+			if test $PHP_MAJMIN_VERSION -lt 700; then
+				if test -n "$installRemoteModule_version" && test $(compareVersions "$installRemoteModule_version" 1.0.0) -ge 0; then
+					printf '### ERROR ### ddtrace %s requires PHP 7.0 or later (PHP %s is in use).\n' "$installRemoteModule_version" "$PHP_MAJDOTMIN_VERSION" >&2
+					exit 1
+				fi
+				if test -z "$installRemoteModule_version"; then
+					# newer 0.x releases reject PHP 5 in their configure script
+					installRemoteModule_version=0.75.0
+				fi
 				installCargo
+			elif test -n "$installRemoteModule_version" && test $(compareVersions "$installRemoteModule_version" 1.0.0) -lt 0; then
+				installCargo
+			else
+				installDDTrace "$installRemoteModule_version"
+				installRemoteModule_manuallyInstalled=2
 			fi
 			;;
 		decimal)
@@ -3396,6 +3506,11 @@ installRemoteModule() {
 					fi
 					;;
 			esac
+			if test -z "$installRemoteModule_version"; then
+				if test $PHP_MAJMIN_VERSION -lt 802; then
+					installRemoteModule_version=1.5.1
+				fi
+			fi
 			;;
 		ds)
 			if test -z "$installRemoteModule_version"; then
@@ -3403,6 +3518,8 @@ installRemoteModule() {
 					installRemoteModule_version=1.3.0
 				elif test $PHP_MAJMIN_VERSION -lt 704; then
 					installRemoteModule_version=1.4.0
+				elif test $PHP_MAJMIN_VERSION -lt 802; then
+					installRemoteModule_version=1.6.0
 				fi
 			fi
 			;;
@@ -3500,6 +3617,11 @@ installRemoteModule() {
 					installRemoteModule_version=1.1.2
 				elif test $PHP_MAJMIN_VERSION -le 700; then
 					installRemoteModule_version=2.1.3
+				elif test $PHP_MAJMIN_VERSION -le 701; then
+					installRemoteModule_version=2.1.4
+				elif test $DISTRO_VERSION_NUMBER -eq 10 && { test $PHP_MAJMIN_VERSION -eq 801 || test $PHP_MAJMIN_VERSION -eq 802; }; then
+					# I don't know why on Debian Buster sometimes we have "undefined symbol: zif_gearman_client_set_ssl"
+					installRemoteModule_version=2.1.4
 				fi
 			fi
 			case "$DISTRO" in
@@ -3566,6 +3688,9 @@ installRemoteModule() {
 							;;
 						alpine@3.7 | alpine@3.8 | debian@9) # With newer version: "This package requires GCC 7 or higher"
 							installRemoteModule_version=1.52.1
+							;;
+						alpine@3.11 | alpine@3.12) # With 1.81.0: "/src/core/lib/promise/detail/promise_like.h:219:65: internal compiler error: in assign_temp, at function.c:982"
+							installRemoteModule_version=1.80.0
 							;;
 						alpine@3.13) # With 1.71.0, 1.72.0: "src/core/call/call_filters.h:1002:69: internal compiler error: in assign_temp, at function.c:984"
 							installRemoteModule_version=1.70.0
@@ -4021,6 +4146,8 @@ installRemoteModule() {
 					installRemoteModule_version=4.1.2
 				elif test $PHP_MAJMIN_VERSION -lt 800; then
 					installRemoteModule_version=5.4.0
+				elif test $PHP_MAJMIN_VERSION -lt 801; then
+					installRemoteModule_version=5.10.0
 				fi
 			fi
 			installRemoteModule_cppflags='-Wno-incompatible-pointer-types'
@@ -4192,11 +4319,9 @@ installRemoteModule() {
 					fi
 					;;
 				debian)
-					case "$(dpkg -l 'libssl*' | grep -E '^ii ' | cut -d' ' -f3)" in
-						libssl3*)
-							installRemoteModule_flags=+libssl3
-							;;
-					esac
+					if dpkg -l 'libssl*' | grep -E '^ii ' | cut -d' ' -f3 | grep -q '^libssl3'; then
+						installRemoteModule_flags=+libssl3
+					fi
 					;;
 			esac
 			# See https://relay.so/builds
@@ -4204,10 +4329,22 @@ installRemoteModule() {
 			printf 'Downloading relay v%s (%s) from %s... ' "$installRemoteModule_version" "$installRemoteModule_hardware" "$installRemoteModule_url"
 			installRemoteModule_src="$(getPackageSource $installRemoteModule_url)"
 			echo 'done.'
-			cp -- "$installRemoteModule_src/relay-pkg.so" "$PHP_EXTDIR/relay.so"
+			if test $PHP_THREADSAFE -eq 1; then
+				cp -- "$installRemoteModule_src/relay-zts.so" "$PHP_EXTDIR/relay.so"
+			else
+				cp -- "$installRemoteModule_src/relay-pkg.so" "$PHP_EXTDIR/relay.so"
+			fi
 			sed -i "s/00000000-0000-0000-0000-000000000000/$(cat /proc/sys/kernel/random/uuid)/" "$PHP_EXTDIR/relay.so"
 			installRemoteModule_ini_extra="$(grep -vE '^[ \t]*extension[ \t]*=' $installRemoteModule_src/relay.ini)"
 			installRemoteModule_manuallyInstalled=1
+			;;
+		rrd)
+			installRemoteModule_cppflags='-Wno-incompatible-pointer-types'
+			if test -z "$installRemoteModule_version"; then
+				if test $PHP_MAJMIN_VERSION -lt 700; then
+					installRemoteModule_version=1.1.3
+				fi
+			fi
 			;;
 		saxon)
 			case "${IPE_SAXON_EDITION:-}" in
@@ -4218,59 +4355,85 @@ installRemoteModule() {
 					installRemoteModule_edition=EE
 					;;
 			esac
+			installRemoteModule_url=
 			if test -z "$installRemoteModule_version"; then
 				if test $PHP_MAJMIN_VERSION -lt 800; then
 					installRemoteModule_version='12.3'
+				else
+					case $(uname -m) in
+						aarch64 | arm64 | armv8)
+							installRemoteModule_regexArchitecture='(linux-arm64|linux-aarch64)'
+							;;
+						*)
+							installRemoteModule_regexArchitecture=linux-x86_64
+							;;
+					esac
+					installRemoteModule_regex="https://downloads.saxonica.com/SaxonC/${installRemoteModule_edition}/[0-9]+/SaxonC${installRemoteModule_edition}-$installRemoteModule_regexArchitecture-[0-9]+-[0-9]+-[0-9]+\.zip"
+					installRemoteModule_url="$(curl $IPE_CURL_FLAGS -sSLf https://www.saxonica.com/download/c.xml | grep -Eo "$installRemoteModule_regex" | head -n 1)"
+					if test $? -ne 0 || test -z "$installRemoteModule_url"; then
+						printf "Failed to determine SaxonC download URL - Nothing matches\n%s\n" "$installRemoteModule_regex"
+						exit 1
+					fi
+					installRemoteModule_version=$(printf '%s\n' "$installRemoteModule_url" | sed 's|.*-\([0-9][0-9]*-[0-9][0-9]*-[0-9][0-9]*\)\.zip$|\1|' | tr '-' '.')
 				fi
 			fi
-			case $(uname -m) in
-				aarch64 | arm64 | armv8)
-					if test -z "$installRemoteModule_version" || test $(compareVersions "$installRemoteModule_version" '12.9') -ge 0 || test $(compareVersions "$installRemoteModule_version" '12.6') -lt 0; then
-						installRemoteModule_architecture=linux-arm64
-					else
-						installRemoteModule_architecture=linux-aarch64
-					fi
-					;;
-				*)
-					installRemoteModule_architecture=linux-x86_64
-					;;
-			esac
-			installRemoteModule_majorVersion=
-			if test -n "$installRemoteModule_version"; then
+			if test -z "$installRemoteModule_url"; then
 				installRemoteModule_majorVersion="${installRemoteModule_version%%.*}"
-				if test "$installRemoteModule_majorVersion" -ge 12; then
+				case $(uname -m) in
+					aarch64 | arm64 | armv8)
+						if test $(compareVersions "$installRemoteModule_version" '12.9') -ge 0 || test $(compareVersions "$installRemoteModule_version" '12.6') -lt 0; then
+							installRemoteModule_architecture=linux-arm64
+						else
+							installRemoteModule_architecture=linux-aarch64
+						fi
+						;;
+					*)
+						installRemoteModule_architecture=linux-x86_64
+						;;
+				esac
+				if test $(compareVersions "$installRemoteModule_version" 12.6) -ge 0; then
+					installRemoteModule_url=https://downloads.saxonica.com/SaxonC/${installRemoteModule_edition}/${installRemoteModule_majorVersion}/SaxonC${installRemoteModule_edition}-${installRemoteModule_architecture}-$(printf '%s' "$installRemoteModule_version" | tr '.' '-').zip
+				elif test $(compareVersions "$installRemoteModule_version" 12.0) -ge 0; then
 					installRemoteModule_url=https://downloads.saxonica.com/SaxonC/${installRemoteModule_edition}/${installRemoteModule_majorVersion}/libsaxon-${installRemoteModule_edition}C-${installRemoteModule_architecture}-v${installRemoteModule_version}.zip
 				else
 					installRemoteModule_url=https://downloads.saxonica.com/SaxonC/${installRemoteModule_edition}/${installRemoteModule_majorVersion}/libsaxon-${installRemoteModule_edition}C-setup64-v${installRemoteModule_version}.zip
 				fi
-			else
-				installRemoteModule_regex="https://downloads.saxonica.com/SaxonC/${installRemoteModule_edition}/[0-9]+/SaxonC${installRemoteModule_edition}-${installRemoteModule_architecture}-[0-9\-]+.zip"
-				installRemoteModule_url="$(curl $IPE_CURL_FLAGS -sSLf https://www.saxonica.com/download/c.xml | grep -Eo "$installRemoteModule_regex" | head -n 1)"
-				if test $? -ne 0 || test -z "$installRemoteModule_url"; then
-					printf "Failed to determine SaxonC download URL - Nothing matches\n%s\n" "$installRemoteModule_regex"
-					exit 1
-				fi
 			fi
-			printf 'Downloading SaxonC %s from %s\n' "$installRemoteModule_edition" "$installRemoteModule_url"
+			printf 'Downloading SaxonC %s v%s from %s\n' "$installRemoteModule_edition" "$installRemoteModule_version" "$installRemoteModule_url"
 			installRemoteModule_dir="$(getPackageSource $installRemoteModule_url)"
 			if ! test -f /usr/lib/libsaxon-*.so; then
+				echo 'Installing SaxonC shared libraries...'
 				installRemoteModule_files="$(find "$installRemoteModule_dir" \( -type f -o -type l \) \( -name 'libsaxonc-*.so*' -o -name 'libsaxon-*.so*' \))"
 				for installRemoteModule_file in $installRemoteModule_files; do
 					cp -P "$installRemoteModule_file" /usr/lib/
 				done
 				ldconfig || true
 			fi
-			installRemoteModule_files="$(find "$installRemoteModule_dir" -type f -name php8_XsltExecutable.cpp)"
-			for installRemoteModule_file in $installRemoteModule_files; do
-				sed -i 's/Z_TYPE_P(val) != NULL/Z_TYPE_P(val) != IS_NULL/g' "$installRemoteModule_file"
-			done
+			if test $(compareVersions "$installRemoteModule_version" 13.0.0) -lt 0; then
+				installRemoteModule_files="$(find "$installRemoteModule_dir" -type f -name php8_XsltExecutable.cpp)"
+				for installRemoteModule_file in $installRemoteModule_files; do
+					printf 'Applying SaxonC patch for Z_TYPE_P to %s...\n' "$installRemoteModule_file"
+					sed -i 's/Z_TYPE_P(val) != NULL/Z_TYPE_P(val) != IS_NULL/g' "$installRemoteModule_file"
+				done
+			fi
 			if test -d "$installRemoteModule_dir/php/src"; then
 				cd "$installRemoteModule_dir/php/src"
 			else
 				cd "$installRemoteModule_dir/Saxon.C.API"
 			fi
+			if test $(compareVersions "$installRemoteModule_version" 13.0.0) -eq 0; then
+				# See https://saxonica.plan.io/issues/7113
+				echo 'Applying SaxonC patch for extension source path...'
+				sed -i 's|../../../src/php8_saxon.cpp|php8_saxon.cpp|g' config.m4
+				echo 'Applying SaxonC patch for extension installation path...'
+				sed -Ei 's/^ *EXTENSION_DIR=.*//g' config.m4
+			fi
 			phpize
-			./configure --with-saxon="$installRemoteModule_dir/SaxonC${installRemoteModule_edition}"
+			if test $(compareVersions "$installRemoteModule_version" 13.0.0) -ge 0; then
+				./configure --with-saxonc="$installRemoteModule_dir/SaxonC${installRemoteModule_edition}" --with-saxonc-core="$installRemoteModule_dir/SaxonCCore${installRemoteModule_edition}"
+			else
+				./configure --with-saxon="$installRemoteModule_dir/SaxonC${installRemoteModule_edition}"
+			fi
 			make -j$(getProcessorCount) install
 			cd - >/dev/null
 			installRemoteModule_manuallyInstalled=1
@@ -4428,6 +4591,15 @@ installRemoteModule() {
 			if test -z "$installRemoteModule_version"; then
 				if test $PHP_MAJMIN_VERSION -le 506; then
 					installRemoteModule_version=0.13
+				elif test $PHP_MAJMIN_VERSION -le 704; then
+					installRemoteModule_version=1.4.1
+				fi
+			fi
+			;;
+		statgrab)
+			if test -z "$installRemoteModule_version"; then
+				if test $PHP_MAJMIN_VERSION -le 704; then
+					installRemoteModule_version=0.6.0
 				fi
 			fi
 			;;
@@ -4450,7 +4622,12 @@ installRemoteModule() {
 				elif test $PHP_MAJMIN_VERSION -le 504; then
 					installRemoteModule_version=2.0.4
 				elif test $PHP_MAJMIN_VERSION -le 506; then
-					installRemoteModule_version=2.0.11
+					# Using 2.0.11 when libpcre-dev is installed causes a Segmentation fault in php 5 (see https://github.com/mlocati/docker-php-extension-installer/issues/1282)
+					if test "$DISTRO" = debian && { dpkg -l 'libpcre*-dev' 2>/dev/null | grep -Eq '^ii'; }; then
+						installRemoteModule_version=2.0.10
+					else
+						installRemoteModule_version=2.0.11
+					fi
 				elif test $PHP_MAJMIN_VERSION -le 700; then
 					installRemoteModule_version=4.3.6
 				elif test $PHP_MAJMIN_VERSION -le 701; then
@@ -4936,6 +5113,20 @@ installRemoteModule() {
 				fi
 			fi
 			;;
+		v8js)
+			if test -z "$installRemoteModule_version"; then
+				# php8 branch HEAD: there are no v8js releases on PECL/Git that support PHP 8.x
+				installRemoteModule_version=8a39efa3cf3b275e402ddf3c4f6b611a5f69a499
+			fi
+			installRemoteModule_src="$(getPackageSource "https://codeload.github.com/phpv8/v8js/tar.gz/$installRemoteModule_version")"
+			cd -- "$installRemoteModule_src"
+			phpize
+			./configure
+			make -j$(getProcessorCount)
+			make install
+			cd - >/dev/null
+			installRemoteModule_manuallyInstalled=1
+			;;
 		vld)
 			if test -z "$installRemoteModule_version"; then
 				if test $PHP_MAJMIN_VERSION -lt 700; then
@@ -5022,6 +5213,14 @@ installRemoteModule() {
 			;;
 		xlswriter)
 			installRemoteModule_version="$(resolvePeclStabilityVersion "$installRemoteModule_module" "$installRemoteModule_version")"
+			if test -z "$installRemoteModule_version"; then
+				case "$DISTRO_VERSION" in
+					debian@8)
+						# The gcc version of Debian Jessie is too old => error: 'for' loop initial declarations are only allowed in C99 or C11 mode
+						installRemoteModule_version=1.5.8
+						;;
+				esac
+			fi
 			if test -z "$installRemoteModule_version" || test $(compareVersions "$installRemoteModule_version" 1.2.7) -ge 0; then
 				# enable reader supports?
 				addConfigureOption enable-reader yes
@@ -5530,12 +5729,16 @@ mkdir -p /tmp/pickle.tmp
 IPE_ERRFLAG_FILE="$(mktemp -p /tmp/src)"
 CONFIGURE_FILE=/tmp/configure-options
 IPE_APK_FLAGS=''
+IPE_CURL_FLAGS='--retry 3 --retry-delay 5 --connect-timeout 15'
+if curl --help | grep -q -- '--retry-all-errors'; then
+	IPE_CURL_FLAGS="$IPE_CURL_FLAGS --retry-all-errors"
+fi
+if curl --help | grep -q -- '--retry-connrefused'; then
+	IPE_CURL_FLAGS="$IPE_CURL_FLAGS --retry-connrefused"
+fi
 case "${IPE_INSECURE:-}" in
 	1 | y* | Y*)
-		IPE_CURL_FLAGS='-k'
-		;;
-	*)
-		IPE_CURL_FLAGS=''
+		IPE_CURL_FLAGS="$IPE_CURL_FLAGS -k"
 		;;
 esac
 setDistro
