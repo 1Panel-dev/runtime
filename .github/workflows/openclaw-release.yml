@@ -7,8 +7,8 @@ on:
   workflow_dispatch:
     inputs:
       openclawTag:
-        default: "2026.6.6"
-        description: "OpenClaw release and Docker Hub tag, for example 2026.6.6"
+        default: "2026.6.8"
+        description: "OpenClaw release and Docker Hub tag, for example 2026.6.8"
         required: true
       pushLatest:
         description: "Push latest tag"
