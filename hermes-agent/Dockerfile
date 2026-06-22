@@ -11,7 +11,6 @@ USER root
 
 ENV HERMES_DASHBOARD=1 \
     HERMES_DASHBOARD_HOST=0.0.0.0 \
-    HERMES_DASHBOARD_INSECURE=1 \
     HERMES_DASHBOARD_PORT=9119 \
     VIRTUAL_ENV=/opt/hermes/.venv \
     PATH=/opt/hermes/.venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
