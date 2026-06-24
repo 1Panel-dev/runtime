@@ -16,8 +16,7 @@ ENV HERMES_DASHBOARD=1 \
     PATH=/opt/hermes/.venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 
 RUN chmod -R u+w /opt/hermes/.venv && \
-    hermes_version="$(python -c 'import importlib.metadata as m; print(m.version("hermes-agent"))')" && \
-    python -m pip install --no-cache-dir "hermes-agent[feishu]==${hermes_version}" && \
+    uv pip install --no-cache-dir "lark-oapi==1.5.3" "qrcode==7.4.2" && \
     chown -R root:root /opt/hermes/.venv && \
     chmod -R a+rX /opt/hermes/.venv && \
     chmod -R a-w /opt/hermes/.venv
