@@ -15,6 +15,13 @@ ENV HERMES_DASHBOARD=1 \
     VIRTUAL_ENV=/opt/hermes/.venv \
     PATH=/opt/hermes/.venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 
+RUN chmod -R u+w /opt/hermes/.venv && \
+    hermes_version="$(python -c 'import importlib.metadata as m; print(m.version("hermes-agent"))')" && \
+    python -m pip install --no-cache-dir "hermes-agent[feishu]==${hermes_version}" && \
+    chown -R root:root /opt/hermes/.venv && \
+    chmod -R a+rX /opt/hermes/.venv && \
+    chmod -R a-w /opt/hermes/.venv
+
 COPY hermes-agent/hermes-gateway-run.sh /usr/local/bin/1panel-hermes-gateway-run
 RUN chmod 755 /usr/local/bin/1panel-hermes-gateway-run
 
