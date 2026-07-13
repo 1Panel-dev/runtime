@@ -255,7 +255,11 @@ RUN --mount=type=cache,id=openclaw-bookworm-apt-cache,target=/var/cache/apt,shar
       python3 -m pip install --no-cache-dir --break-system-packages $OPENCLAW_IMAGE_PIP_PACKAGES; \
     fi
 
-RUN install -d -o node -g node /home/node/.local/bin && \
+# Create the parent separately so it does not remain root-owned.
+RUN install -d -m 0755 -o node -g node /home/node/.local && \
+    install -d -m 0755 -o node -g node /home/node/.local/bin && \
+    stat -c '%U:%G %a' /home/node/.local | grep -qx 'node:node 755' && \
+    stat -c '%U:%G %a' /home/node/.local/bin | grep -qx 'node:node 755' && \
     for attempt in 1 2 3 4 5; do \
       if curl -fsSL --connect-timeout 20 --retry 5 --retry-delay 3 --retry-all-errors \
         https://skillhub.cn/install/install.sh -o /tmp/skillhub-install.sh; then \
