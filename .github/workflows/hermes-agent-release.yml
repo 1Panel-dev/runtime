@@ -5,7 +5,7 @@ on:
     inputs:
       hermesAgentTag:
         description: "Hermes Agent release tag"
-        default: "2026.7.30"
+        default: "2026.8.3"
         required: true
       platforms:
         description: "Platforms"

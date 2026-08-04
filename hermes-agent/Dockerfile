@@ -13,7 +13,7 @@ ENV HERMES_DASHBOARD=1 \
     HERMES_DASHBOARD_HOST=0.0.0.0 \
     HERMES_DASHBOARD_PORT=9119 \
     VIRTUAL_ENV=/opt/hermes/.venv \
-    PATH=/opt/hermes/.venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+    PATH=/opt/hermes/bin:/opt/hermes/.venv/bin:/opt/data/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 
 RUN chmod -R u+w /opt/hermes/.venv && \
     uv pip install --no-cache-dir "lark-oapi==1.6.8" "qrcode==7.4.2" && \
