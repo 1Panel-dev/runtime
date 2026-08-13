@@ -19,5 +19,8 @@ https://{$CADDY_ACCESS_HOST}:8443 {
 		-Server
 	}
 
-	reverse_proxy 127.0.0.1:3080
+	reverse_proxy 127.0.0.1:3080 {
+		header_up Host 127.0.0.1:3080
+		header_up Origin http://127.0.0.1:3080
+	}
 }
