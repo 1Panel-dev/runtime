@@ -1,6 +1,8 @@
 {
 	admin off
 	auto_https disable_redirects
+	default_sni {$CADDY_ACCESS_HOST}
+	skip_install_trust
 }
 
 https://{$CADDY_ACCESS_HOST}:8443 {
@@ -12,7 +14,6 @@ https://{$CADDY_ACCESS_HOST}:8443 {
 	}
 
 	header {
-		Strict-Transport-Security "max-age=31536000"
 		X-Content-Type-Options "nosniff"
 		Referrer-Policy "same-origin"
 		-Server
