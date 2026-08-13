@@ -32,8 +32,8 @@ RUN apt-get update && \
 COPY --from=caddy /usr/bin/caddy /usr/bin/caddy
 COPY --from=dsh-builder /usr/local/lib/node_modules /usr/local/lib/node_modules
 
-RUN ln -s ../lib/node_modules/@deepseek-ai/dsh/lib/bin.js /usr/local/bin/dsh && \
-    dsh --help >/dev/null && \
+RUN node --expose-internals /usr/local/lib/node_modules/@deepseek-ai/dsh/lib/bin.js \
+      --help >/dev/null && \
     groupadd --system --gid 1001 caddy && \
     useradd --system --uid 1001 --gid caddy --home-dir /var/lib/caddy \
       --create-home --shell /usr/sbin/nologin caddy && \
