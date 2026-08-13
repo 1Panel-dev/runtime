@@ -1,0 +1,25 @@
+{
+	admin off
+	auto_https disable_redirects
+}
+
+https://{$CADDY_ACCESS_HOST}:8443 {
+	tls internal
+	encode zstd gzip
+
+	basic_auth argon2id {
+		{$DSH_AUTH_USERNAME} {$DSH_AUTH_PASSWORD_HASH}
+	}
+
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "same-origin"
+		-Server
+	}
+
+	reverse_proxy 127.0.0.1:3080 {
+		header_up Host 127.0.0.1:3080
+		header_up X-Forwarded-Host 127.0.0.1:3080
+	}
+}
