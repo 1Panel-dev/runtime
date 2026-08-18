@@ -13,6 +13,8 @@ RUN apt-get update && \
 
 FROM node:24-bookworm-slim
 
+ARG PNPM_VERSION=11.7.0
+
 LABEL org.opencontainers.image.title="DeepSeek Harness" \
       org.opencontainers.image.source="https://github.com/deepseek-ai/deepseek-harness"
 
@@ -40,6 +42,10 @@ RUN node --expose-internals /usr/local/lib/node_modules/@deepseek-ai/dsh/lib/bin
     install -d -m 0700 -o node -g node /data/dsh /data/dsh/home && \
     install -d -m 0750 -o node -g node /workspace && \
     install -d -m 0700 -o caddy -g caddy /data/caddy /data/caddy/config
+
+RUN npm install --global "pnpm@${PNPM_VERSION}" && \
+    npm cache clean --force && \
+    test "$(gosu node env HOME=/data/dsh/home pnpm --version)" = "$PNPM_VERSION"
 
 COPY deepseek-harness/Caddyfile /etc/caddy/Caddyfile
 COPY deepseek-harness/docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
