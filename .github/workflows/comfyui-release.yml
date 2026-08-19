@@ -1,0 +1,264 @@
+name: Build ComfyUI Image
+
+on:
+  workflow_dispatch:
+    inputs:
+      comfyuiVersion:
+        description: "ComfyUI stable release (latest, v0.33.1, or 0.33.1)"
+        default: "latest"
+        required: true
+        type: string
+      pushLatest:
+        description: "Push latest when this is the newest upstream stable release"
+        default: true
+        required: true
+        type: boolean
+
+permissions:
+  contents: read
+
+concurrency:
+  group: comfyui-release
+  cancel-in-progress: false
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+  IMAGE_NAME: 1panel/comfyui
+
+jobs:
+  resolve:
+    runs-on: ubuntu-24.04
+    outputs:
+      version: ${{ steps.release.outputs.version }}
+      release_tag: ${{ steps.release.outputs.release_tag }}
+      revision: ${{ steps.release.outputs.revision }}
+      push_latest: ${{ steps.release.outputs.push_latest }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Resolve and verify ComfyUI release
+        id: release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          INPUT_COMFYUI_VERSION: ${{ inputs.comfyuiVersion }}
+          INPUT_PUSH_LATEST: ${{ inputs.pushLatest }}
+        run: |
+          set -euo pipefail
+
+          requested="${INPUT_COMFYUI_VERSION}"
+          if [ "${requested}" = "latest" ]; then
+            release_url="https://api.github.com/repos/Comfy-Org/ComfyUI/releases/latest"
+          else
+            version="${requested#v}"
+            if [[ ! "${version}" =~ ^[0-9]+\.[0-9]+\.[0-9]+([.-][0-9A-Za-z.-]+)?$ ]]; then
+              echo "::error::Invalid ComfyUI release version: ${requested}"
+              exit 1
+            fi
+            release_url="https://api.github.com/repos/Comfy-Org/ComfyUI/releases/tags/v${version}"
+          fi
+
+          release_json="$(mktemp)"
+          curl -fsSL --retry 5 --retry-delay 3 --retry-all-errors \
+            -H "Accept: application/vnd.github+json" \
+            -H "Authorization: Bearer ${GH_TOKEN}" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "${release_url}" -o "${release_json}"
+
+          release_tag="$(jq -r '.tag_name' "${release_json}")"
+          if [ "$(jq -r '.draft' "${release_json}")" != "false" ] || \
+             [ "$(jq -r '.prerelease' "${release_json}")" != "false" ]; then
+            echo "::error::${release_tag} is not a published stable release"
+            exit 1
+          fi
+
+          version="${release_tag#v}"
+          if [[ "${release_tag}" != "v${version}" ]] || \
+             [[ ! "${version}" =~ ^[0-9]+\.[0-9]+\.[0-9]+([.-][0-9A-Za-z.-]+)?$ ]]; then
+            echo "::error::Unexpected upstream release tag: ${release_tag}"
+            exit 1
+          fi
+
+          direct_revision="$(git ls-remote https://github.com/Comfy-Org/ComfyUI.git "refs/tags/${release_tag}" | awk 'NR == 1 { print $1 }')"
+          peeled_revision="$(git ls-remote https://github.com/Comfy-Org/ComfyUI.git "refs/tags/${release_tag}^{}" | awk 'NR == 1 { print $1 }')"
+          revision="${peeled_revision:-${direct_revision}}"
+          if [[ ! "${revision}" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "::error::Unable to resolve commit for ${release_tag}"
+            exit 1
+          fi
+
+          latest_json="$(mktemp)"
+          curl -fsSL --retry 5 --retry-delay 3 --retry-all-errors \
+            -H "Accept: application/vnd.github+json" \
+            -H "Authorization: Bearer ${GH_TOKEN}" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "https://api.github.com/repos/Comfy-Org/ComfyUI/releases/latest" \
+            -o "${latest_json}"
+          latest_release_tag="$(jq -r '.tag_name' "${latest_json}")"
+
+          {
+            echo "version=${version}"
+            echo "release_tag=${release_tag}"
+            echo "revision=${revision}"
+            if [ "${INPUT_PUSH_LATEST}" = "true" ] && [ "${release_tag}" = "${latest_release_tag}" ]; then
+              echo "push_latest=true"
+            elif [ "${INPUT_PUSH_LATEST}" = "true" ]; then
+              echo "::warning::Skipping latest because ${release_tag} is not upstream latest (${latest_release_tag})" >&2
+              echo "push_latest=false"
+            else
+              echo "push_latest=false"
+            fi
+          } >> "${GITHUB_OUTPUT}"
+
+  build-amd64:
+    needs: resolve
+    runs-on: ubuntu-24.04
+    outputs:
+      digest: ${{ steps.build.outputs.digest }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v4
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_PASSWORD }}
+
+      - name: Build and push amd64 image
+        id: build
+        uses: docker/build-push-action@v7
+        with:
+          context: comfyui
+          file: comfyui/Dockerfile
+          platforms: linux/amd64
+          build-args: |
+            COMFYUI_VERSION=${{ needs.resolve.outputs.version }}
+            COMFYUI_REVISION=${{ needs.resolve.outputs.revision }}
+          outputs: type=image,name=${{ env.IMAGE_NAME }},push-by-digest=true,name-canonical=true,push=true
+
+  build-arm64:
+    needs: resolve
+    runs-on: ubuntu-24.04-arm
+    outputs:
+      digest: ${{ steps.build.outputs.digest }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v4
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_PASSWORD }}
+
+      - name: Build and push arm64 image
+        id: build
+        uses: docker/build-push-action@v7
+        with:
+          context: comfyui
+          file: comfyui/Dockerfile
+          platforms: linux/arm64
+          build-args: |
+            COMFYUI_VERSION=${{ needs.resolve.outputs.version }}
+            COMFYUI_REVISION=${{ needs.resolve.outputs.revision }}
+          outputs: type=image,name=${{ env.IMAGE_NAME }},push-by-digest=true,name-canonical=true,push=true
+
+  create-manifest:
+    needs: [resolve, build-amd64, build-arm64]
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v4
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_PASSWORD }}
+
+      - name: Create and verify multi-platform manifest
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          IMAGE: ${{ env.IMAGE_NAME }}
+          VERSION: ${{ needs.resolve.outputs.version }}
+          RELEASE_TAG: ${{ needs.resolve.outputs.release_tag }}
+          PUSH_LATEST: ${{ needs.resolve.outputs.push_latest }}
+          AMD64_DIGEST: ${{ needs.build-amd64.outputs.digest }}
+          ARM64_DIGEST: ${{ needs.build-arm64.outputs.digest }}
+          CANDIDATE_TAG: candidate-${{ github.run_id }}-${{ github.run_attempt }}
+        run: |
+          set -euo pipefail
+
+          for digest in "${AMD64_DIGEST}" "${ARM64_DIGEST}"; do
+            if [[ ! "${digest}" =~ ^sha256:[0-9a-f]{64}$ ]]; then
+              echo "::error::Invalid image digest: ${digest}"
+              exit 1
+            fi
+          done
+
+          verify_manifest() {
+            local image_ref="$1"
+            local manifest_json
+            manifest_json="$(docker buildx imagetools inspect --format '{{json .Manifest}}' "${image_ref}")"
+            printf '%s\n' "${manifest_json}" | jq -e '
+              (.digest | test("^sha256:[0-9a-f]{64}$")) and
+              any(.manifests[]; .platform.os == "linux" and .platform.architecture == "amd64") and
+              any(.manifests[]; .platform.os == "linux" and .platform.architecture == "arm64") and
+              all(.manifests[];
+                .platform.os != "linux" or
+                .platform.architecture == "amd64" or
+                .platform.architecture == "arm64"
+              )
+            ' >/dev/null
+          }
+
+          candidate="${IMAGE}:${CANDIDATE_TAG}"
+          docker buildx imagetools create \
+            -t "${candidate}" \
+            "${IMAGE}@${AMD64_DIGEST}" \
+            "${IMAGE}@${ARM64_DIGEST}"
+          verify_manifest "${candidate}"
+
+          candidate_json="$(docker buildx imagetools inspect --format '{{json .Manifest}}' "${candidate}")"
+          candidate_digest="$(printf '%s\n' "${candidate_json}" | jq -r '.digest')"
+          publish_args=(
+            --tag "${IMAGE}:${RELEASE_TAG}"
+            --tag "${IMAGE}:${VERSION}"
+          )
+          publish_latest=false
+
+          if [ "${PUSH_LATEST}" = "true" ]; then
+            current_latest="$(
+              curl -fsSL --retry 5 --retry-delay 3 --retry-all-errors \
+                -H "Accept: application/vnd.github+json" \
+                -H "Authorization: Bearer ${GH_TOKEN}" \
+                -H "X-GitHub-Api-Version: 2022-11-28" \
+                "https://api.github.com/repos/Comfy-Org/ComfyUI/releases/latest" \
+                | jq -r '.tag_name'
+            )"
+            if [ "${RELEASE_TAG}" = "${current_latest}" ]; then
+              publish_args+=(--tag "${IMAGE}:latest")
+              publish_latest=true
+            else
+              echo "::warning::Skipping latest because upstream advanced to ${current_latest} during the build"
+            fi
+          fi
+
+          docker buildx imagetools create \
+            "${publish_args[@]}" \
+            "${IMAGE}@${candidate_digest}"
+
+          verify_manifest "${IMAGE}:${RELEASE_TAG}"
+          verify_manifest "${IMAGE}:${VERSION}"
+          if [ "${publish_latest}" = "true" ]; then
+            verify_manifest "${IMAGE}:latest"
+          fi
