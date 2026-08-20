@@ -32,6 +32,7 @@ RUN case "${TARGETARCH}" in \
 
 RUN apt-get update && \
     DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+      build-essential \
       ca-certificates \
       curl \
       ffmpeg \
