@@ -15,8 +15,11 @@ FROM node:24-bookworm-slim
 
 ARG PNPM_VERSION=11.7.0
 
-LABEL org.opencontainers.image.title="DeepSeek Harness" \
-      org.opencontainers.image.source="https://github.com/deepseek-ai/deepseek-harness"
+LABEL org.opencontainers.image.source="https://github.com/1Panel-dev/runtime" \
+      org.opencontainers.image.url="https://github.com/deepseek-ai/deepseek-harness" \
+      org.opencontainers.image.title="1Panel DeepSeek Harness" \
+      org.opencontainers.image.description="DeepSeek Harness image maintained by 1Panel with HTTPS access and persistent runtime data" \
+      org.opencontainers.image.vendor="1Panel"
 
 RUN apt-get update && \
     DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \

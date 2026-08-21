@@ -7,6 +7,7 @@ This repository contains runtime images used by 1Panel.
 Current images in this repository:
 
 - `1panel/comfyui`
+- `1panel/deepseek-harness`
 - `1panel/hermes-agent`
 - `1panel/openclaw`
 - `1panel/node`
@@ -16,6 +17,7 @@ Current images in this repository:
 ## Images
 
 - `1panel/comfyui`: ComfyUI runtime image for NVIDIA GPUs, built from matching upstream stable releases
+- `1panel/deepseek-harness`: DeepSeek Harness image maintained by 1Panel with HTTPS access and persistent runtime data
 - `1panel/hermes-agent`: Hermes Agent runtime image maintained by 1Panel with bundled messaging channel dependencies
 - `1panel/openclaw`: OpenClaw runtime image built from official source with 1Panel-oriented customizations
 - `1panel/node`: Node.js runtime image

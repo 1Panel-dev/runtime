@@ -7,6 +7,7 @@
 当前仓库主要维护以下镜像：
 
 - `1panel/comfyui`
+- `1panel/deepseek-harness`
 - `1panel/hermes-agent`
 - `1panel/openclaw`
 - `1panel/node`
@@ -16,6 +17,7 @@
 ## 镜像说明
 
 - `1panel/comfyui`：面向 NVIDIA GPU、严格基于上游稳定 Release 构建的 ComfyUI 运行环境镜像
+- `1panel/deepseek-harness`：由 1Panel 维护的 DeepSeek Harness 镜像，提供 HTTPS 访问和运行数据持久化
 - `1panel/hermes-agent`：1Panel 维护的 Hermes Agent 运行环境镜像，内置消息通道相关依赖
 - `1panel/openclaw`：基于 OpenClaw 官方源码构建的运行环境镜像，包含面向 1Panel 场景的定制
 - `1panel/node`：Node.js 运行环境镜像

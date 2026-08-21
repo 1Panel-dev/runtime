@@ -20,6 +20,10 @@ if [[ "${1:-}" == "--self-test" ]]; then
   exit 0
 fi
 
+printf '\033[1;32m%s\033[0m\n' 'This image is maintained by 1Panel.'
+printf '\033[1;33m%s\033[0m\n' 'For support or issue discussion, please visit:'
+printf '\033[1;36m%s\033[0m\n' 'https://github.com/1Panel-dev/1Panel/discussions'
+
 access_host="${HTTPS_ACCESS_HOST:-}"
 auth_username="${DSH_AUTH_USERNAME:-}"
 auth_password="${DSH_AUTH_PASSWORD:-}"
