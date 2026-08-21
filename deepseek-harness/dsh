@@ -1,0 +1,11 @@
+#!/bin/sh
+set -eu
+
+if [ "$(id -u)" -eq 0 ]; then
+  exec gosu node env HOME=/data/dsh/home DSH_HOME=/data/dsh \
+    node --expose-internals /usr/local/lib/node_modules/@deepseek-ai/dsh/lib/bin.js "$@"
+fi
+
+export HOME=/data/dsh/home
+export DSH_HOME=/data/dsh
+exec node --expose-internals /usr/local/lib/node_modules/@deepseek-ai/dsh/lib/bin.js "$@"

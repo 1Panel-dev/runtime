@@ -5,7 +5,7 @@ on:
     inputs:
       dshVersion:
         description: "@deepseek-ai/dsh npm version"
-        default: "0.1.0-rc.6"
+        default: "0.1.0-rc.8"
         required: true
       platforms:
         description: "Platforms"

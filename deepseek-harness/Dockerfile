@@ -48,9 +48,11 @@ RUN npm install --global "pnpm@${PNPM_VERSION}" && \
     test "$(gosu node env HOME=/data/dsh/home pnpm --version)" = "$PNPM_VERSION"
 
 COPY deepseek-harness/Caddyfile /etc/caddy/Caddyfile
+COPY deepseek-harness/dsh /usr/local/bin/dsh
 COPY deepseek-harness/docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 
-RUN chmod 0755 /usr/local/bin/docker-entrypoint.sh && \
+RUN chmod 0755 /usr/local/bin/dsh /usr/local/bin/docker-entrypoint.sh && \
+    dsh --help >/dev/null && \
     /usr/local/bin/docker-entrypoint.sh --self-test
 
 ENV DSH_HOME=/data/dsh \
