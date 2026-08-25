@@ -19,7 +19,7 @@ https://{$CADDY_ACCESS_HOST}:8443 {
 		-Server
 	}
 
-	@unexpected_origin `{http.request.header.Origin} != "" && {http.request.header.Origin} != "https://" + {http.request.host}`
+	@unexpected_origin `{http.request.header.Origin} != "" && {http.request.header.Origin} != "https://" + {http.request.hostport}`
 	@settings_api path /api/settings.describe /api/settings.update /api/settings.replace /api/settings.mutate /api/credentials.describe /api/credentials.set /api/credentials.unset /api/llm.discoverModels
 
 	route /dsh-deployment.js {
