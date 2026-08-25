@@ -19,8 +19,29 @@ https://{$CADDY_ACCESS_HOST}:8443 {
 		-Server
 	}
 
-	reverse_proxy 127.0.0.1:3080 {
-		header_up Host 127.0.0.1:3080
-		header_up Origin http://127.0.0.1:3080
+	@unexpected_origin `{http.request.header.Origin} != "" && {http.request.header.Origin} != "https://" + {http.request.host}`
+	@settings_api path /api/settings.describe /api/settings.update /api/settings.replace /api/settings.mutate /api/credentials.describe /api/credentials.set /api/credentials.unset /api/llm.discoverModels
+
+	route /dsh-deployment.js {
+		header {
+			Content-Type "application/javascript; charset=utf-8"
+			Cache-Control "no-store"
+		}
+		respond "globalThis.__DSH_AUTHENTICATED_SETTINGS__ = true;" 200
+	}
+
+	route @settings_api {
+		respond @unexpected_origin "Forbidden" 403
+		reverse_proxy 127.0.0.1:3080 {
+			header_up Host 127.0.0.1:3080
+			header_up -Origin
+			header_up -Authorization
+		}
+	}
+
+	route {
+		reverse_proxy 127.0.0.1:3080 {
+			header_up -Authorization
+		}
 	}
 }

@@ -11,6 +11,10 @@ RUN apt-get update && \
       python3 && \
     npm install --global "@deepseek-ai/dsh@${DSH_VERSION}"
 
+COPY deepseek-harness/patch-dsh-authenticated-settings.mjs /tmp/patch-dsh-authenticated-settings.mjs
+
+RUN node /tmp/patch-dsh-authenticated-settings.mjs
+
 FROM node:24-bookworm-slim
 
 ARG PNPM_VERSION=11.7.0
