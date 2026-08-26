@@ -1,0 +1,61 @@
+name: Build vLLM GB10 DSpark Image
+
+on:
+  workflow_dispatch:
+    inputs:
+      imageVersion:
+        description: "Image version"
+        default: "0.1.1"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: vllm-gb10-dspark-release
+  cancel-in-progress: false
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+  IMAGE_NAME: 1panel/vllm-gb10-dspark
+
+jobs:
+  docker:
+    runs-on: ubuntu-24.04-arm
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v4
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_PASSWORD }}
+
+      - name: Validate image version
+        shell: bash
+        env:
+          IMAGE_VERSION: ${{ inputs.imageVersion }}
+        run: |
+          set -euo pipefail
+          if [[ ! "${IMAGE_VERSION}" =~ ^[0-9]+\.[0-9]+\.[0-9]+([.-][0-9A-Za-z.-]+)?$ ]]; then
+            echo "::error::Invalid image version: ${IMAGE_VERSION}"
+            exit 1
+          fi
+
+      - name: Build and push arm64 image
+        uses: docker/build-push-action@v7
+        with:
+          context: vllm-gb10-dspark
+          file: vllm-gb10-dspark/Dockerfile
+          platforms: linux/arm64
+          push: true
+          build-args: |
+            IMAGE_VERSION=${{ inputs.imageVersion }}
+          tags: ${{ env.IMAGE_NAME }}:${{ inputs.imageVersion }}
+          cache-from: type=gha,scope=vllm-gb10-dspark
+          cache-to: type=gha,mode=max,scope=vllm-gb10-dspark

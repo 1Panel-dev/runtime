@@ -10,6 +10,7 @@ Current images in this repository:
 - `1panel/deepseek-harness`
 - `1panel/hermes-agent`
 - `1panel/openclaw`
+- `1panel/vllm-gb10-dspark`
 - `1panel/node`
 - `1panel/php`
 - `1panel/java`
@@ -20,9 +21,14 @@ Current images in this repository:
 - `1panel/deepseek-harness`: DeepSeek Harness image maintained by 1Panel with HTTPS access and persistent runtime data
 - `1panel/hermes-agent`: Hermes Agent runtime image maintained by 1Panel with bundled messaging channel dependencies
 - `1panel/openclaw`: OpenClaw runtime image built from official source with 1Panel-oriented customizations
+- `1panel/vllm-gb10-dspark`: ARM64 vLLM runtime for DeepSeek V4 Flash on two NVIDIA GB10 nodes
 - `1panel/node`: Node.js runtime image
 - `1panel/php`: PHP-FPM runtime images for multiple versions
 - `1panel/java`: Java JDK runtime images based on Eclipse Temurin
+
+## vLLM GB10 DSpark
+
+`1panel/vllm-gb10-dspark:0.1.1` extends the pinned Anemll DSpark GX10 `0.1.1` image with the deployment patches and DSpark proposer used by the matching 1Panel App Store package. It is published for `linux/arm64` only and requires two NVIDIA GB10 nodes, NVIDIA Container Toolkit, and a working RoCE/InfiniBand link.
 
 ## ComfyUI
 
