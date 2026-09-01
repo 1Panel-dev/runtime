@@ -7,8 +7,8 @@ on:
   workflow_dispatch:
     inputs:
       openclawTag:
-        default: "2026.7.1"
-        description: "OpenClaw release and Docker Hub tag, for example 2026.7.1"
+        default: "2026.8.1"
+        description: "OpenClaw release and Docker Hub tag, for example 2026.8.1"
         required: true
       pushLatest:
         description: "Push latest tag"
@@ -26,6 +26,8 @@ jobs:
       openclaw_tag: ${{ steps.meta.outputs.openclaw_tag }}
       dockerhub_tag: ${{ steps.meta.outputs.dockerhub_tag }}
       push_latest: ${{ steps.meta.outputs.push_latest }}
+      source_sha: ${{ steps.meta.outputs.source_sha }}
+      built_at: ${{ steps.meta.outputs.built_at }}
     steps:
       - name: Resolve release metadata
         id: meta
@@ -51,10 +53,22 @@ jobs:
             exit 1
           fi
 
+          source_sha="$(git ls-remote https://github.com/openclaw/openclaw.git "refs/tags/v${openclaw_tag}^{}" | awk 'NR == 1 { print $1 }')"
+          if [ -z "$source_sha" ]; then
+            source_sha="$(git ls-remote https://github.com/openclaw/openclaw.git "refs/tags/v${openclaw_tag}" | awk 'NR == 1 { print $1 }')"
+          fi
+          if [ -z "$source_sha" ]; then
+            echo "::error::Failed to resolve upstream tag v${openclaw_tag}"
+            exit 1
+          fi
+          built_at="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+
           {
             echo "openclaw_tag=$openclaw_tag"
             echo "dockerhub_tag=$openclaw_tag"
             echo "push_latest=$push_latest"
+            echo "source_sha=$source_sha"
+            echo "built_at=$built_at"
           } >> "$GITHUB_OUTPUT"
 
   build-amd64:
@@ -80,6 +94,9 @@ jobs:
           curl -fsSL "https://github.com/openclaw/openclaw/archive/refs/tags/v${{ needs.resolve.outputs.openclaw_tag }}.tar.gz" \
             | tar -xz -C _src/openclaw --strip-components=1
           test -d _src/openclaw/packages || { echo "::error::OpenClaw source is missing packages/. Check openclawTag matches this Dockerfile."; exit 1; }
+          test -f _src/openclaw/node-version.mjs || { echo "::error::OpenClaw source is missing node-version.mjs. Check openclawTag matches this Dockerfile."; exit 1; }
+          test -f _src/openclaw/scripts/docker/verify-native-addons.sh || { echo "::error::OpenClaw source is missing scripts/docker/verify-native-addons.sh. Check openclawTag matches this Dockerfile."; exit 1; }
+          test -f _src/openclaw/scripts/lib/docker-plugin-selection.mjs || { echo "::error::OpenClaw source is missing scripts/lib/docker-plugin-selection.mjs. Check openclawTag matches this Dockerfile."; exit 1; }
           test -f _src/openclaw/scripts/prune-docker-plugin-dist.mjs || { echo "::error::OpenClaw source is missing scripts/prune-docker-plugin-dist.mjs. Check openclawTag matches this Dockerfile."; exit 1; }
           test -d _src/openclaw/extensions/canvas/src/host || { echo "::error::OpenClaw source is missing extensions/canvas/src/host/. Check openclawTag matches this Dockerfile."; exit 1; }
           mkdir -p _src/openclaw/openclaw
@@ -93,6 +110,10 @@ jobs:
           platforms: linux/amd64
           push: true
           build-args: |
+            GIT_COMMIT=${{ needs.resolve.outputs.source_sha }}
+            OPENCLAW_BUILD_TIMESTAMP=${{ needs.resolve.outputs.built_at }}
+            OPENCLAW_DOCKER_BUILD_VERSION=${{ needs.resolve.outputs.openclaw_tag }}
+            OPENCLAW_EXTENSIONS=diagnostics-otel,codex
             OPENCLAW_INSTALL_BROWSER=true
           tags: |
             ${{ env.IMAGE_NAME }}:${{ needs.resolve.outputs.dockerhub_tag }}-amd64
@@ -122,6 +143,9 @@ jobs:
           curl -fsSL "https://github.com/openclaw/openclaw/archive/refs/tags/v${{ needs.resolve.outputs.openclaw_tag }}.tar.gz" \
             | tar -xz -C _src/openclaw --strip-components=1
           test -d _src/openclaw/packages || { echo "::error::OpenClaw source is missing packages/. Check openclawTag matches this Dockerfile."; exit 1; }
+          test -f _src/openclaw/node-version.mjs || { echo "::error::OpenClaw source is missing node-version.mjs. Check openclawTag matches this Dockerfile."; exit 1; }
+          test -f _src/openclaw/scripts/docker/verify-native-addons.sh || { echo "::error::OpenClaw source is missing scripts/docker/verify-native-addons.sh. Check openclawTag matches this Dockerfile."; exit 1; }
+          test -f _src/openclaw/scripts/lib/docker-plugin-selection.mjs || { echo "::error::OpenClaw source is missing scripts/lib/docker-plugin-selection.mjs. Check openclawTag matches this Dockerfile."; exit 1; }
           test -f _src/openclaw/scripts/prune-docker-plugin-dist.mjs || { echo "::error::OpenClaw source is missing scripts/prune-docker-plugin-dist.mjs. Check openclawTag matches this Dockerfile."; exit 1; }
           test -d _src/openclaw/extensions/canvas/src/host || { echo "::error::OpenClaw source is missing extensions/canvas/src/host/. Check openclawTag matches this Dockerfile."; exit 1; }
           mkdir -p _src/openclaw/openclaw
@@ -135,6 +159,10 @@ jobs:
           platforms: linux/arm64
           push: true
           build-args: |
+            GIT_COMMIT=${{ needs.resolve.outputs.source_sha }}
+            OPENCLAW_BUILD_TIMESTAMP=${{ needs.resolve.outputs.built_at }}
+            OPENCLAW_DOCKER_BUILD_VERSION=${{ needs.resolve.outputs.openclaw_tag }}
+            OPENCLAW_EXTENSIONS=diagnostics-otel,codex
             OPENCLAW_INSTALL_BROWSER=true
           tags: |
             ${{ env.IMAGE_NAME }}:${{ needs.resolve.outputs.dockerhub_tag }}-arm64
