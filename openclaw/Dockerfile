@@ -408,11 +408,12 @@ RUN --mount=type=cache,id=openclaw-bookworm-apt-cache,target=/var/cache/apt,shar
 RUN ln -sf /app/openclaw.mjs /usr/local/bin/openclaw && \
   chmod 755 /usr/local/bin/docker-entrypoint.sh /app/openclaw.mjs
 
-RUN install -d -m 0755 -o node -g node /home/node/.config && \
+RUN install -d -m 0755 -o node -g node /home/node/.cache /home/node/.config && \
   install -d -m 0700 -o node -g node \
     /home/node/.openclaw \
     /home/node/.openclaw/workspace \
     /home/node/.config/openclaw && \
+  stat -c '%U:%G %a' /home/node/.cache | grep -qx 'node:node 755' && \
   stat -c '%U:%G %a' /home/node/.openclaw | grep -qx 'node:node 700' && \
   stat -c '%U:%G %a' /home/node/.openclaw/workspace | grep -qx 'node:node 700' && \
   stat -c '%U:%G %a' /home/node/.config | grep -qx 'node:node 755' && \
