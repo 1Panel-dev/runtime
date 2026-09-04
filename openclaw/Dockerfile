@@ -171,16 +171,19 @@ RUN if grep -qx 'qa-lab' /tmp/openclaw-selected-plugin-dirs; then \
       cp -R extensions/qa-lab/web/dist dist/extensions/qa-lab/web/dist; \
     fi
 
-# Replace build dependencies without asking pnpm to mutate inherited directories.
-# Preserve compiled workspace output; copy production workspace installs and
-# pnpm metadata together so nested dependencies and lifecycle outputs survive.
-FROM build AS runtime-assets
+# Keep compiled workspaces and generated plugin assets, but omit development
+# dependency trees before merging the build output into the production install.
+FROM build AS runtime-build-output
 ARG OPENCLAW_BUNDLED_PLUGIN_DIR
-ARG OPENCLAW_EXCLUDE_BUNDLED_PLUGINS
 RUN rm -rf node_modules ui/node_modules && \
     find packages "${OPENCLAW_BUNDLED_PLUGIN_DIR}" -name node_modules -prune -exec rm -rf {} +
-COPY --from=production-deps /app/ ./
-COPY --from=build /app/package.json ./package.json
+
+# Inherit production dependencies instead of copying their full tree again.
+# The build overlay also carries the stamped release package.json.
+FROM production-deps AS runtime-assets
+ARG OPENCLAW_BUNDLED_PLUGIN_DIR
+ARG OPENCLAW_EXCLUDE_BUNDLED_PLUGINS
+COPY --from=runtime-build-output /app/ ./
 
 # Prune omitted plugins and build metadata. Keep SDK-native binaries only for
 # selected plugins that explicitly require them.
@@ -233,14 +236,14 @@ LABEL org.opencontainers.image.source="https://github.com/openclaw/openclaw" \
 
 WORKDIR /app
 
-# Install runtime system utilities missing from bookworm-slim and apply current
-# Debian point-release security fixes even when the pinned base is older.
+# Install runtime utilities and the OpenMP library required by llama-server.
+# Apply current Debian security fixes even when the pinned base is older.
 RUN --mount=type=cache,id=openclaw-bookworm-apt-cache,target=/var/cache/apt,sharing=locked \
     --mount=type=cache,id=openclaw-bookworm-apt-lists,target=/var/lib/apt,sharing=locked \
     apt-get update && \
     DEBIAN_FRONTEND=noninteractive apt-get dist-upgrade -y && \
     DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
-      ca-certificates curl git hostname lsof openssh-client openssl procps python3 tini && \
+      ca-certificates curl git hostname libgomp1 lsof openssh-client openssl procps python3 tini && \
     update-ca-certificates
 
 # Refresh npm's runtime dependency tree without installing development tools.
