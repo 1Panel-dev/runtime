@@ -5,6 +5,7 @@ import { dirname, join, resolve } from 'node:path'
 const dshRoot = resolve(process.argv[2] ?? '/usr/local/lib/node_modules/@deepseek-ai/dsh')
 const requireFromDsh = createRequire(join(dshRoot, 'package.json'))
 const flag = 'globalThis.__DSH_AUTHENTICATED_SETTINGS__ === true'
+const proxyAuthFlag = 'process.env.ONEPANEL_DSH_AUTH_PROXY === "1"'
 
 async function packageRoot(name) {
   const manifestPath = requireFromDsh.resolve(`${name}/package.json`)
@@ -28,17 +29,24 @@ const settingsPath = join(
 let settings = await readFile(settingsPath, 'utf8')
 settings = replaceOnce(
   settings,
-  'new SettingsScopeController(connection.api, spec, this.mirror, connection.isLoopback ? "host" : "memory", this.schema)',
-  `new SettingsScopeController(connection.api, spec, this.mirror, connection.isLoopback || ${flag} ? "host" : "memory", this.schema)`,
-  'settings scope',
-)
-settings = replaceOnce(
-  settings,
-  'new SettingsDescribeMirror(connection.api, connection.isLoopback ? "host" : "memory")',
-  `new SettingsDescribeMirror(connection.api, connection.isLoopback || ${flag} ? "host" : "memory")`,
-  'settings mirror',
+  'const persistence = ctx.remote.$host.isLoopback ? "host" : "memory";',
+  `const persistence = ctx.remote.$host.isLoopback || ${flag} ? "host" : "memory";`,
+  'settings persistence',
 )
 await writeFile(settingsPath, settings, 'utf8')
+
+const connectionPath = join(
+  await packageRoot('@deepseek-ai/dsh-client-connection'),
+  'lib/index.js',
+)
+let connection = await readFile(connectionPath, 'utf8')
+connection = replaceOnce(
+  connection,
+  'isAuthenticated(request) {\n\t\tconst authority = requestAuthority(request.headers);',
+  `isAuthenticated(request) {\n\t\tif (${proxyAuthFlag}) return true;\n\t\tconst authority = requestAuthority(request.headers);`,
+  'browser proxy authentication',
+)
+await writeFile(connectionPath, connection, 'utf8')
 
 const frontendPath = join(
   await packageRoot('@deepseek-ai/dsh-web-frontend'),
@@ -53,6 +61,10 @@ if (moduleScripts.length !== 1 || frontend.includes(bootstrap)) {
 frontend = frontend.replace(moduleScripts[0], `  ${bootstrap}\n${moduleScripts[0]}`)
 await writeFile(frontendPath, frontend, 'utf8')
 
-if ((settings.split(flag).length - 1) !== 2 || !frontend.includes(`${bootstrap}\n${moduleScripts[0]}`)) {
+if (
+  (settings.split(flag).length - 1) !== 1 ||
+  (connection.split(proxyAuthFlag).length - 1) !== 1 ||
+  !frontend.includes(`${bootstrap}\n${moduleScripts[0]}`)
+) {
   throw new Error('authenticated settings patch verification failed')
 }

@@ -65,6 +65,7 @@ gosu node env \
   HOME=/data/dsh/home \
   DSH_HOME=/data/dsh \
   DSH_TELEMETRY_DISABLED=1 \
+  ONEPANEL_DSH_AUTH_PROXY=1 \
   node --expose-internals /usr/local/lib/node_modules/@deepseek-ai/dsh/lib/bin.js \
     web --host 127.0.0.1 --port 3080 \
       --trusted-host 127.0.0.1:3080 "$access_host" &
