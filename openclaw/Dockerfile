@@ -186,10 +186,12 @@ ARG OPENCLAW_BUNDLED_PLUGIN_DIR
 ARG OPENCLAW_EXCLUDE_BUNDLED_PLUGINS
 COPY --from=runtime-build-output /app/ ./
 
-# Prune omitted plugins and build metadata. Keep SDK-native binaries only for
+# Prune omitted plugins and build metadata, then link the selected plugins'
+# plugin-local dependencies under dist/extensions/<id> after package lifecycle
+# cleanup so the packaged roots keep them. Keep SDK-native binaries only for
 # selected plugins that explicitly require them.
-RUN OPENCLAW_EXTENSIONS="$(cat /tmp/openclaw-selected-plugin-dirs)" OPENCLAW_BUNDLED_PLUGIN_DIR="$OPENCLAW_BUNDLED_PLUGIN_DIR" node scripts/prune-docker-plugin-dist.mjs && \
-    node scripts/postinstall-bundled-plugins.mjs && \
+RUN node scripts/postinstall-bundled-plugins.mjs && \
+    OPENCLAW_EXTENSIONS="$(cat /tmp/openclaw-selected-plugin-dirs)" OPENCLAW_BUNDLED_PLUGIN_DIR="$OPENCLAW_BUNDLED_PLUGIN_DIR" node scripts/prune-docker-plugin-dist.mjs && \
     for plugin in $OPENCLAW_EXCLUDE_BUNDLED_PLUGINS; do \
       if [ -n "$plugin" ]; then \
         rm -rf "${OPENCLAW_BUNDLED_PLUGIN_DIR}/$plugin"; \
@@ -261,6 +263,7 @@ RUN chown node:node /app
 COPY --from=runtime-assets --chown=node:node /app/dist ./dist
 COPY --from=runtime-assets --chown=node:node /app/node_modules ./node_modules
 COPY --from=runtime-assets --chown=node:node /app/package.json .
+COPY --from=runtime-assets --chown=node:node /app/pnpm-lock.yaml .
 COPY --from=runtime-assets --chown=node:node /app/pnpm-workspace.yaml .
 COPY --from=runtime-assets --chown=node:node /app/patches ./patches
 COPY --from=runtime-assets --chown=node:node /app/node-version.mjs .
@@ -366,6 +369,7 @@ RUN --mount=type=cache,id=openclaw-bookworm-apt-cache,target=/var/cache/apt,shar
     if [ -n "$OPENCLAW_INSTALL_BROWSER" ]; then \
       apt-get update && \
       DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends xvfb && \
+      install -d -m 0755 -o node -g node "$(dirname "$PLAYWRIGHT_BROWSERS_PATH")" && \
       mkdir -p "$PLAYWRIGHT_BROWSERS_PATH" && \
       node /app/node_modules/playwright-core/cli.js install --with-deps chromium && \
       chown -R node:node "$PLAYWRIGHT_BROWSERS_PATH"; \
