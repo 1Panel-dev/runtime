@@ -1,4 +1,5 @@
 name: Build DeepSeek Harness Image
+run-name: Build DeepSeek Harness Image ${{ github.event.inputs.dshVersion }}
 
 on:
   workflow_dispatch:

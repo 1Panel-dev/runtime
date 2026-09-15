@@ -1,4 +1,5 @@
 name: Build OpenClaw Image
+run-name: Build OpenClaw Image ${{ github.event.inputs.openclawTag || github.ref_name }}
 
 on:
   push:
@@ -7,8 +8,8 @@ on:
   workflow_dispatch:
     inputs:
       openclawTag:
-        default: "2026.9.3"
-        description: "OpenClaw release and Docker Hub tag, for example 2026.9.3"
+        default: "2026.9.4"
+        description: "OpenClaw release and Docker Hub tag, for example 2026.9.4"
         required: true
       pushLatest:
         description: "Push latest tag"
