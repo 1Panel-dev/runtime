@@ -6,7 +6,7 @@ on:
     inputs:
       hermesAgentTag:
         description: "Hermes Agent release tag"
-        default: "2026.9.21"
+        default: "2026.9.24"
         required: true
       platforms:
         description: "Platforms"
@@ -40,14 +40,13 @@ jobs:
         id: resolve
         env:
           HERMES_AGENT_TAG: ${{ github.event.inputs.hermesAgentTag }}
-          FALLBACK_IMAGE: nousresearch/hermes-agent:latest
         run: |
           set -euo pipefail
 
           raw_tag="${HERMES_AGENT_TAG#v}"
           candidates=(
-            "nousresearch/hermes-agent:${HERMES_AGENT_TAG}"
             "nousresearch/hermes-agent:v${raw_tag}"
+            "nousresearch/hermes-agent:${raw_tag}"
           )
 
           for image in "${candidates[@]}"; do
@@ -59,10 +58,8 @@ jobs:
             fi
           done
 
-          echo "Requested image not found, falling back to latest: ${candidates[*]}"
-          echo "base_image=${FALLBACK_IMAGE}" >> "${GITHUB_OUTPUT}"
-          echo "image_tag=${raw_tag}" >> "${GITHUB_OUTPUT}"
-          echo "resolved_base_tag=latest" >> "${GITHUB_OUTPUT}"
+          echo "::error::Requested Hermes Agent image not found: ${candidates[*]}" >&2
+          exit 1
 
       - name: Build Hermes Agent Image and Push
         uses: docker/build-push-action@v6

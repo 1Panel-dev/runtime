@@ -8,8 +8,8 @@ on:
   workflow_dispatch:
     inputs:
       openclawTag:
-        default: "2026.9.5"
-        description: "OpenClaw release and Docker Hub tag, for example 2026.9.5"
+        default: "2026.9.6"
+        description: "OpenClaw release and Docker Hub tag, for example 2026.9.6"
         required: true
       pushLatest:
         description: "Push latest tag"
@@ -96,6 +96,9 @@ jobs:
             | tar -xz -C _src/openclaw --strip-components=1
           test -d _src/openclaw/packages || { echo "::error::OpenClaw source is missing packages/. Check openclawTag matches this Dockerfile."; exit 1; }
           test -f _src/openclaw/node-version.mjs || { echo "::error::OpenClaw source is missing node-version.mjs. Check openclawTag matches this Dockerfile."; exit 1; }
+          for required_file in cli-root-options.mjs gateway-run-argv.mjs gateway-shutdown-budget.mjs node-host-launcher.mjs scripts/lib/fs-safe-prebuild.mjs; do
+            test -f "_src/openclaw/$required_file" || { echo "::error::OpenClaw source is missing $required_file. Check openclawTag matches this Dockerfile."; exit 1; }
+          done
           test -f _src/openclaw/scripts/docker/verify-native-addons.sh || { echo "::error::OpenClaw source is missing scripts/docker/verify-native-addons.sh. Check openclawTag matches this Dockerfile."; exit 1; }
           test -f _src/openclaw/scripts/lib/docker-plugin-selection.mjs || { echo "::error::OpenClaw source is missing scripts/lib/docker-plugin-selection.mjs. Check openclawTag matches this Dockerfile."; exit 1; }
           test -f _src/openclaw/scripts/prune-docker-plugin-dist.mjs || { echo "::error::OpenClaw source is missing scripts/prune-docker-plugin-dist.mjs. Check openclawTag matches this Dockerfile."; exit 1; }
@@ -145,6 +148,9 @@ jobs:
             | tar -xz -C _src/openclaw --strip-components=1
           test -d _src/openclaw/packages || { echo "::error::OpenClaw source is missing packages/. Check openclawTag matches this Dockerfile."; exit 1; }
           test -f _src/openclaw/node-version.mjs || { echo "::error::OpenClaw source is missing node-version.mjs. Check openclawTag matches this Dockerfile."; exit 1; }
+          for required_file in cli-root-options.mjs gateway-run-argv.mjs gateway-shutdown-budget.mjs node-host-launcher.mjs scripts/lib/fs-safe-prebuild.mjs; do
+            test -f "_src/openclaw/$required_file" || { echo "::error::OpenClaw source is missing $required_file. Check openclawTag matches this Dockerfile."; exit 1; }
+          done
           test -f _src/openclaw/scripts/docker/verify-native-addons.sh || { echo "::error::OpenClaw source is missing scripts/docker/verify-native-addons.sh. Check openclawTag matches this Dockerfile."; exit 1; }
           test -f _src/openclaw/scripts/lib/docker-plugin-selection.mjs || { echo "::error::OpenClaw source is missing scripts/lib/docker-plugin-selection.mjs. Check openclawTag matches this Dockerfile."; exit 1; }
           test -f _src/openclaw/scripts/prune-docker-plugin-dist.mjs || { echo "::error::OpenClaw source is missing scripts/prune-docker-plugin-dist.mjs. Check openclawTag matches this Dockerfile."; exit 1; }
