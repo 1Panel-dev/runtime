@@ -2,7 +2,7 @@ FROM caddy:2.11.4 AS caddy
 
 FROM node:24-bookworm-slim AS dsh-builder
 
-ARG DSH_VERSION=0.1.7-rc.2
+ARG DSH_VERSION=0.2.0-rc.2
 
 RUN apt-get update && \
     DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
