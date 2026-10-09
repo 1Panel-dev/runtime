@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1.7
 
-ARG BASE_IMAGE=nousresearch/hermes-agent:v2026.9.24
+ARG BASE_IMAGE=nousresearch/hermes-agent:v0.21.6
 FROM ${BASE_IMAGE}
 
 LABEL org.opencontainers.image.source="https://github.com/1Panel-dev/runtime" \
@@ -15,8 +15,11 @@ ENV HERMES_DASHBOARD=1 \
     VIRTUAL_ENV=/opt/hermes/.venv \
     PATH=/opt/hermes/bin:/opt/hermes/.venv/bin:/opt/data/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 
-RUN chmod -R u+w /opt/hermes/.venv && \
-    uv pip install --no-cache-dir "lark-oapi==1.6.8" "qrcode==7.4.2" && \
+# Resolve the uv binary from the upstream image's managed tool store.
+RUN uv_bin="$(/usr/local/bin/python3 -c 'from pm import installed_package; print(installed_package("uv").binary)')" && \
+    test -x "$uv_bin" && \
+    chmod -R u+w /opt/hermes/.venv && \
+    "$uv_bin" pip install --no-cache-dir --python "$VIRTUAL_ENV/bin/python" "lark-oapi==1.6.8" "qrcode==7.4.2" && \
     chown -R root:root /opt/hermes/.venv && \
     chmod -R a+rX /opt/hermes/.venv && \
     chmod -R a-w /opt/hermes/.venv
