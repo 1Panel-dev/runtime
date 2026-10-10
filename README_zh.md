@@ -26,6 +26,16 @@
 - `1panel/php`：多个版本的 PHP-FPM 运行环境镜像
 - `1panel/java`：基于 Eclipse Temurin 的 Java JDK 运行环境镜像
 
+## PHP 7.3 / 7.4
+
+`Build PHP 7 Image` 工作流（`.github/workflows/php7-release.yml`）从 `php/7` 构建 PHP 7.3 和 7.4，与 PHP 8 分开维护。例如：
+
+```bash
+docker build --build-arg PHP_VERSION=7.4.33 -t 1panel/php:7.4.33-fpm php/7
+```
+
+构建时先将 Buster 和 Bullseye 的软件源切换到 Debian 官方签名归档，再安装依赖；仅对这些归档源关闭元数据过期检查，保留软件包签名校验。基础镜像内置 `libzip4` 和 `unzip`，因此 1Panel 重建运行环境并加载已保存的扩展文件时，ZIP 运行库仍然可用。ZIP 扩展本身仍通过 1Panel 的扩展安装脚本安装。
+
 ## vLLM GB10 DSpark
 
 `1panel/vllm-gb10-dspark:0.1.1` 基于固定的 Anemll DSpark GX10 `0.1.1` 镜像，加入对应 1Panel 应用商店版本使用的部署补丁和 DSpark proposer。该镜像仅发布 `linux/arm64`，要求两台 NVIDIA GB10 节点、NVIDIA Container Toolkit 和可用的 RoCE/InfiniBand 链路。
