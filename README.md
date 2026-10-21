@@ -26,6 +26,10 @@ Current images in this repository:
 - `1panel/php`: PHP-FPM runtime images for multiple versions
 - `1panel/java`: Java JDK runtime images based on Eclipse Temurin
 
+## PHP 8 security releases
+
+`Build PHP 8 Security Images` builds PHP 8.2.35, 8.3.36, 8.4.27 and 8.5.12 from pinned upstream Dockerfiles, without waiting for official base image tags. See [source provenance and build instructions](php/8/upstream/README.md).
+
 ## PHP 7.3 / 7.4
 
 The `Build PHP 7 Image` workflow (`.github/workflows/php7-release.yml`) builds PHP 7.3 and 7.4 from `php/7`, independently of PHP 8. For example:

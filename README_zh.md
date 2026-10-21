@@ -26,6 +26,10 @@
 - `1panel/php`：多个版本的 PHP-FPM 运行环境镜像
 - `1panel/java`：基于 Eclipse Temurin 的 Java JDK 运行环境镜像
 
+## PHP 8 安全版本
+
+`Build PHP 8 Security Images` 从固定上游提交的 Dockerfile 构建 PHP 8.2.35、8.3.36、8.4.27 和 8.5.12，不依赖尚未发布的官方基础镜像标签。详见[源码来源和构建说明](php/8/upstream/README.md)。
+
 ## PHP 7.3 / 7.4
 
 `Build PHP 7 Image` 工作流（`.github/workflows/php7-release.yml`）从 `php/7` 构建 PHP 7.3 和 7.4，与 PHP 8 分开维护。例如：
