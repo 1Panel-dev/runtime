@@ -19,11 +19,17 @@ https://{$CADDY_ACCESS_HOST}:8443 {
 		-Server
 	}
 
-	@unexpected_origin `{http.request.header.Origin} != "" && {http.request.header.Origin} != "https://" + {http.request.hostport}`
-	@settings_api path /api/settings.describe /api/settings.update /api/settings.replace /api/settings.mutate /api/credentials.describe /api/credentials.set /api/credentials.unset /api/llm.discoverModels
+	@unsafe_api {
+		path /api /api/*
+		expression `({http.request.header.Origin} != "" && {http.request.header.Origin} != "https://" + {http.request.hostport}) || {http.request.header.Sec-Fetch-Site} == "cross-site"`
+	}
+	@settings_api path /api/settings/describe /api/settings/update /api/settings/replace /api/settings/mutate /api/credentials/describe /api/credentials/set /api/credentials/unset /api/llm/discoverModels
+
+	route @unsafe_api {
+		respond "Forbidden" 403
+	}
 
 	route @settings_api {
-		respond @unexpected_origin "Forbidden" 403
 		reverse_proxy 127.0.0.1:3080 {
 			header_up Host 127.0.0.1:3080
 			header_up -Origin

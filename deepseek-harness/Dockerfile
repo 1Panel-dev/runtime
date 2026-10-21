@@ -13,7 +13,9 @@ RUN apt-get update && \
 
 COPY deepseek-harness/patch-dsh-authenticated-settings.mjs /tmp/patch-dsh-authenticated-settings.mjs
 
-RUN node /tmp/patch-dsh-authenticated-settings.mjs
+RUN npm install --prefix /tmp/dsh-browser-compat --no-audit --no-fund \
+      core-js@3.51.0 esbuild@0.28.2 && \
+    node /tmp/patch-dsh-authenticated-settings.mjs
 
 FROM node:24-bookworm-slim
 
@@ -57,10 +59,13 @@ RUN npm install --global "pnpm@${PNPM_VERSION}" && \
 COPY deepseek-harness/Caddyfile /etc/caddy/Caddyfile
 COPY deepseek-harness/dsh /usr/local/bin/dsh
 COPY deepseek-harness/docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
+COPY deepseek-harness/test-runtime.mjs /tmp/test-dsh-runtime.mjs
 
 RUN chmod 0755 /usr/local/bin/dsh /usr/local/bin/docker-entrypoint.sh && \
     dsh --help >/dev/null && \
-    /usr/local/bin/docker-entrypoint.sh --self-test
+    /usr/local/bin/docker-entrypoint.sh --self-test && \
+    node --test /tmp/test-dsh-runtime.mjs && \
+    rm /tmp/test-dsh-runtime.mjs
 
 ENV DSH_HOME=/data/dsh \
     DSH_TELEMETRY_DISABLED=1
