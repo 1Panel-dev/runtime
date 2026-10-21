@@ -7,10 +7,15 @@ branch:
             - owner
         inputs:
           PHP_VERSION:
-            name: "PHP 版本"
-            description: "PHP 版本"
+            name: "PHP 基础版本"
+            description: "真实官方基础版本；7.4 回补请填 7.4.33"
             default: "7.2.34"
             required: true
+          PHP_IMAGE_VERSION:
+            name: "1Panel 镜像版本"
+            description: "可选，留空自动映射 EOL 维护版标签，其他版本沿用 PHP 基础版本；不改变 PHP 内部版本"
+            default: ""
+            required: false
           DIR:
             name: "文件目录"
             description: "文件目录"

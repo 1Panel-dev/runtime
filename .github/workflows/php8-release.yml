@@ -15,6 +15,18 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v5
 
+      - name: Select 1Panel image version
+        id: image
+        env:
+          PHP_VERSION: ${{ github.event.inputs.phpVersion }}
+        run: |
+          case "$PHP_VERSION" in
+            8.0.30) image_version=8.0.31 ;;
+            8.1.34) image_version=8.1.35 ;;
+            *) image_version="$PHP_VERSION" ;;
+          esac
+          printf 'version=%s\n' "$image_version" >> "$GITHUB_OUTPUT"
+
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
 
@@ -36,6 +48,6 @@ jobs:
           build-args:
             PHP_VERSION=${{ github.event.inputs.phpVersion }}
           tags: |
-            1panel/php:${{ github.event.inputs.phpVersion }}-fpm
+            1panel/php:${{ steps.image.outputs.version }}-fpm
           cache-from: type=gha
           cache-to: type=gha,mode=max

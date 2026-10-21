@@ -5,7 +5,11 @@ COPY ./data/supervisor-4.2.5.tar.gz /tmp/
 COPY ./data/php-fpm.ini /etc/supervisor.d/php-fpm.ini
 COPY ./data/supervisord.conf /etc/supervisord.conf
 COPY ./data/install-php-extensions  /usr/local/bin/
+COPY ./data/rebuild-php-eol /usr/local/bin/
 COPY ./data/prepare-apt /usr/local/bin/
+
+# Rebuild only the exact EOL baselines; all other series return immediately.
+RUN sh /usr/local/bin/rebuild-php-eol
 
 RUN chmod uga+x /usr/local/bin/prepare-apt && \
     prepare-apt && \

@@ -1,0 +1,150 @@
+#!/bin/sh
+set -eu
+
+fail() { echo "PHP EOL backport: $*" >&2; exit 1; }
+
+select_backport() {
+    case "$1" in
+        7.4.33)
+            commit=712e60f9edfd03f0960fc4fc3c2c375f42b90aa2
+            patch_sha=5fe57ca6ee96d59b36c6e0ca842843c50884f177bef1e85234cf669b577f5e48
+            source_sha=924846abf93bc613815c55dd3f5809377813ac62a9ec4eb3778675b82a27b927
+            ;;
+        8.0.30)
+            commit=82f8f31b16a035c1b67cc253e79f7cc288f4cc20
+            patch_sha=534478c973cef6f493605b7af907f639a364912ee92c24598ddae44c3bc72d1c
+            source_sha=216ab305737a5d392107112d618a755dc5df42058226f1670e9db90e77d777d9
+            ;;
+        8.1.34)
+            commit=1d7dec178a094e6e75b229ce22754045f8c6070a
+            patch_sha=c85ad0fddcbff7f2318617eeaa54d271135463b5bf70a01228447e3ed78de96e
+            source_sha=ffa9e0982e82eeaea848f57687b425ed173aa278fe563001310ae2638db5c251
+            ;;
+        7.4.*|8.0.*|8.1.*) fail "unsupported baseline $1; use 7.4.33, 8.0.30 or 8.1.34" ;;
+        *) return 1 ;;
+    esac
+}
+
+verify_inputs() {
+    printf '%s  %s\n' "$source_sha" "$1" | sha256sum -c -
+    printf '%s  %s\n' "$patch_sha" "$2" | sha256sum -c -
+}
+
+apply_backport() {
+    grep -qx "#define PHP_VERSION \"$version\"" "$1/main/php_version.h" || fail 'source version mismatch'
+    # Forward-only, zero fuzz: both a repeated patch and mismatching source fail.
+    patch -d "$1" -p1 -F0 -N --dry-run < "$2"
+    patch -d "$1" -p1 -F0 -N < "$2"
+}
+
+# Offline source validation, without apt, compilation, Docker or network access.
+if [ "${1:-}" = '--check-source' ]; then
+    [ "$#" = 4 ] || fail 'usage: --check-source VERSION SOURCE.tar.xz COMMIT.patch'
+    version=$2
+    select_backport "$version" || fail "no backport for $version"
+    verify_inputs "$3" "$4"
+    patch_file=$(cd "$(dirname "$4")" && pwd)/$(basename "$4")
+    tmp=$(mktemp -d)
+    trap 'rm -rf "$tmp"' EXIT
+    mkdir "$tmp/source"
+    tar -xJf "$3" -C "$tmp/source" --strip-components=1
+    apply_backport "$tmp/source" "$patch_file"
+    if patch -d "$tmp/source" -p1 -F0 -N --dry-run < "$patch_file" > "$tmp/repeat.log" 2>&1; then
+        fail 'repeated patch unexpectedly accepted'
+    fi
+    echo "Validated $version + $commit; repeated application rejected"
+    exit 0
+fi
+[ "$#" = 0 ] || fail 'unexpected arguments'
+
+version=$(php-config --version)
+select_backport "$version" || exit 0
+marker=/usr/local/share/php/eol-backport
+[ ! -e "$marker" ] || fail 'backport already installed'
+[ "${PHP_VERSION:-}" = "$version" ] || fail 'base image PHP_VERSION mismatch'
+printf '%s  /usr/src/php.tar.xz\n' "$source_sha" | sha256sum -c -
+[ ! -e /usr/src/php ] || fail 'source already extracted; refusing to reuse it'
+
+tmp=$(mktemp -d)
+trap 'rm -rf "$tmp"' EXIT
+configure_options=$(php-config --configure-options)
+extension_dir=$(php-config --extension-dir)
+php -m > "$tmp/modules"
+php -n -i | sed -n '/^PHP API =>/p; /^PHP Extension =>/p; /^Zend Extension =>/p; /^PHP Extension Build =>/p; /^Zend Extension Build =>/p; /^Thread Safety =>/p; /^Debug Build =>/p' > "$tmp/abi"
+find /usr/local/etc -type f -exec sha256sum '{}' + > "$tmp/config.sha256"
+cp -a /usr/local/etc "$tmp/etc"
+saved_apt_mark=$(apt-mark showmanual)
+
+sh /usr/local/bin/prepare-apt
+apt-get update
+# Same build dependencies as the official Debian FPM images, plus patch.
+apt-get install -y --no-install-recommends $PHPIZE_DEPS patch \
+    libargon2-dev libcurl4-openssl-dev libonig-dev libreadline-dev \
+    libsodium-dev libsqlite3-dev libssl-dev libxml2-dev zlib1g-dev
+curl -fsSL --retry 3 "https://github.com/php/php-src/commit/$commit.patch" -o "$tmp/security.patch"
+verify_inputs /usr/src/php.tar.xz "$tmp/security.patch"
+docker-php-source extract
+apply_backport /usr/src/php "$tmp/security.patch"
+
+# Future docker-php-ext-install / install-php-extensions must use patched headers
+# and OPcache sources too. Repack before configure creates build artifacts.
+tar --exclude=.docker-extracted -cJf "$tmp/php.tar.xz" -C /usr/src php
+mv "$tmp/php.tar.xz" /usr/src/php.tar.xz
+
+cd /usr/src/php
+export CFLAGS="$PHP_CFLAGS" CPPFLAGS="$PHP_CPPFLAGS" LDFLAGS="$PHP_LDFLAGS"
+export PHP_BUILD_PROVIDER='https://github.com/docker-library/php' PHP_UNAME='Linux - Docker'
+deb_multiarch=$(dpkg-architecture --query DEB_BUILD_MULTIARCH)
+if [ ! -d /usr/include/curl ] && [ ! -e /usr/local/include/curl ]; then
+    ln -s "/usr/include/$deb_multiarch/curl" /usr/local/include/curl
+fi
+# php-config emits space-separated official flags with quotes removed; no eval.
+set -f
+./configure $configure_options
+set +f
+make -j 2
+make install
+cp -a "$tmp/etc/." /usr/local/etc/
+cmp sapi/cli/php /usr/local/bin/php
+cmp sapi/fpm/php-fpm /usr/local/sbin/php-fpm
+nm -D /usr/local/bin/php > "$tmp/cli.symbols"
+nm -D /usr/local/sbin/php-fpm > "$tmp/fpm.symbols"
+grep -q ' zend_mm_safe_error_ex$' "$tmp/cli.symbols"
+grep -q ' zend_mm_safe_error_ex$' "$tmp/fpm.symbols"
+strip --strip-all /usr/local/bin/php /usr/local/sbin/php-fpm
+find "$extension_dir" -type f -name '*.so' -exec strip --strip-all '{}' +
+[ "$(php-config --version)" = "$version" ] || fail 'installed version changed'
+[ "$(php-config --configure-options)" = "$configure_options" ] || fail 'configure options changed'
+[ "$(php-config --extension-dir)" = "$extension_dir" ] || fail 'extension directory changed'
+php -m > "$tmp/modules.new"
+cmp "$tmp/modules" "$tmp/modules.new"
+php -n -i | sed -n '/^PHP API =>/p; /^PHP Extension =>/p; /^Zend Extension =>/p; /^PHP Extension Build =>/p; /^Zend Extension Build =>/p; /^Thread Safety =>/p; /^Debug Build =>/p' > "$tmp/abi.new"
+cmp "$tmp/abi" "$tmp/abi.new"
+sha256sum -c "$tmp/config.sha256"
+
+cd /
+docker-php-source delete
+apt-mark auto '.*' > /dev/null
+apt-mark manual $saved_apt_mark > /dev/null
+# Retain libraries used by the rebuilt binaries/modules before purging build deps.
+find /usr/local -type f -executable -exec ldd '{}' ';' \
+    | awk '/=>/ { so = $(NF-1); if (index(so, "/usr/local/") == 1) next; gsub("^/(usr/)?", "", so); print "*" so }' \
+    | sort -u | xargs -r dpkg-query --search \
+    | awk 'sub(":$", "", $1) { print $1 }' | sort -u | xargs -r apt-mark manual
+apt-get purge -y --auto-remove -o APT::AutoRemove::RecommendsImportant=false
+rm -rf /var/lib/apt/lists/* /tmp/pear
+ldd /usr/local/bin/php /usr/local/sbin/php-fpm "$extension_dir"/*.so > "$tmp/runtime-libraries"
+if grep -q 'not found' "$tmp/runtime-libraries"; then fail 'runtime library missing after cleanup'; fi
+php -m > "$tmp/modules.final"
+cmp "$tmp/modules" "$tmp/modules.final"
+php --version
+php-fpm -t
+# OOM must exit(1) without invoking PHP shutdown handlers.
+status=0
+php -n -d memory_limit=16M -r 'register_shutdown_function(function () { echo "SHUTDOWN_RAN"; }); str_repeat("x", 32 * 1024 * 1024);' > "$tmp/oom.log" 2>&1 || status=$?
+[ "$status" = 1 ] || fail "unexpected OOM exit status $status"
+if grep -q SHUTDOWN_RAN "$tmp/oom.log"; then fail 'OOM ran shutdown handler'; fi
+grep -q 'Allowed memory size' "$tmp/oom.log"
+mkdir -p "$(dirname "$marker")"
+printf 'PHP %s\ncommit %s\npatch-sha256 %s\noriginal-source-sha256 %s\n' "$version" "$commit" "$patch_sha" "$source_sha" > "$marker"
+sha256sum /usr/src/php.tar.xz >> "$marker"

@@ -29,7 +29,17 @@ main:
       imports: https://cnb.cool/1Panel-dev/secrets/-/blob/main/docker-1panel-envs.yml
       stages:
         - name: set docker tag
-          script: echo -n "${DOCKER_REGISTRY}/${DOCKER_GROUP}/php:${PHP_VERSION}-fpm"
+          script: |
+            image_version="${PHP_IMAGE_VERSION:-}"
+            if [ -z "$image_version" ]; then
+              case "$PHP_VERSION" in
+                7.4.33) image_version=7.4.34 ;;
+                8.0.30) image_version=8.0.31 ;;
+                8.1.34) image_version=8.1.35 ;;
+                *) image_version="$PHP_VERSION" ;;
+              esac
+            fi
+            printf '%s' "${DOCKER_REGISTRY}/${DOCKER_GROUP}/php:${image_version}-fpm"
           exports:
             info: IMAGE_TAG
         - name: docker login

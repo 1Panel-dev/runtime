@@ -30,12 +30,16 @@ Current images in this repository:
 
 `Build PHP 8 Security Images` builds PHP 8.2.35, 8.3.36, 8.4.27 and 8.5.12 from pinned upstream Dockerfiles, without waiting for official base image tags. See [source provenance and build instructions](php/8/upstream/README.md).
 
+## PHP EOL source backports
+
+PHP 7.4.33, 8.0.30 and 8.1.34 builds apply the official minimal source backports for CVE-2026-109618 / CVE-2026-109619 and rebuild PHP. These branches remain EOL; older patch levels in these series now fail explicitly. `1panel/php:7.4.34-fpm`, `8.0.31-fpm` and `8.1.35-fpm` are 1Panel maintenance image tags based on official PHP 7.4.33, 8.0.30 and 8.1.34 respectively; their internal PHP versions remain unchanged. See [implementation, compatibility changes and validation](php/EOL-BACKPORT.md).
+
 ## PHP 7.3 / 7.4
 
 The `Build PHP 7 Image` workflow (`.github/workflows/php7-release.yml`) builds PHP 7.3 and 7.4 from `php/7`, independently of PHP 8. For example:
 
 ```bash
-docker build --build-arg PHP_VERSION=7.4.33 -t 1panel/php:7.4.33-fpm php/7
+docker build --build-arg PHP_VERSION=7.4.33 -t 1panel/php:7.4.34-fpm php/7
 ```
 
 The build prepares signed Debian archive sources for Buster and Bullseye before installing packages. Archive metadata expiration checks are disabled for these sources; package signature verification stays enabled. The base image includes `libzip4` and `unzip`, so the ZIP runtime library remains available when 1Panel rebuilds a runtime using persisted extension files. Installing the ZIP extension still uses the 1Panel extension installer.

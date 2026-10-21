@@ -1,13 +1,22 @@
 name: Build PHP 7 Image
-run-name: Build PHP 7 Image ${{ github.event.inputs.php74Version }}, ${{ github.event.inputs.php73Version }}
+run-name: Build PHP 7 Image ${{ github.event.inputs.php74ImageVersion }}, ${{ github.event.inputs.php73Version }}
 
 on:
   workflow_dispatch:
     inputs:
       php74Version:
-        description: 'PHP 7.4 Version'
+        description: 'Official PHP 7.4 base version (7.4.33)'
         default: '7.4.33'
         required: true
+      php74ImageVersion:
+        description: '1Panel maintenance image version (PHP remains 7.4.33)'
+        default: '7.4.34'
+        required: true
+      buildPhp73:
+        description: 'Also build and publish PHP 7.3'
+        type: boolean
+        default: true
+        required: false
       php73Version:
         description: 'PHP 7.3 Version'
         default: '7.3.33'
@@ -42,11 +51,12 @@ jobs:
           build-args:
             PHP_VERSION=${{ github.event.inputs.php74Version }}
           tags: |
-            1panel/php:${{ github.event.inputs.php74Version }}-fpm
+            1panel/php:${{ github.event.inputs.php74ImageVersion }}-fpm
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
       - name: Build PHP-7.3 and Push
+        if: ${{ inputs.buildPhp73 }}
         uses: docker/build-push-action@v6
         with:
           context: php/7

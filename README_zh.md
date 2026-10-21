@@ -30,12 +30,16 @@
 
 `Build PHP 8 Security Images` 从固定上游提交的 Dockerfile 构建 PHP 8.2.35、8.3.36、8.4.27 和 8.5.12，不依赖尚未发布的官方基础镜像标签。详见[源码来源和构建说明](php/8/upstream/README.md)。
 
+## PHP EOL 源码回补
+
+PHP 7.4.33、8.0.30 和 8.1.34 构建会应用官方针对 CVE-2026-109618 / CVE-2026-109619 的最小源码回补并重新编译 PHP。这些分支仍为 EOL，同系列更早的补丁版本现在会明确失败。`1panel/php:7.4.34-fpm`、`8.0.31-fpm` 和 `8.1.35-fpm` 为 1Panel 维护版镜像标签，分别基于官方 PHP 7.4.33、8.0.30、8.1.34 加上述回补，内部 PHP 版本保持原值。详见[实现、兼容性变化和验证说明](php/EOL-BACKPORT.md)。
+
 ## PHP 7.3 / 7.4
 
 `Build PHP 7 Image` 工作流（`.github/workflows/php7-release.yml`）从 `php/7` 构建 PHP 7.3 和 7.4，与 PHP 8 分开维护。例如：
 
 ```bash
-docker build --build-arg PHP_VERSION=7.4.33 -t 1panel/php:7.4.33-fpm php/7
+docker build --build-arg PHP_VERSION=7.4.33 -t 1panel/php:7.4.34-fpm php/7
 ```
 
 构建时先将 Buster 和 Bullseye 的软件源切换到 Debian 官方签名归档，再安装依赖；仅对这些归档源关闭元数据过期检查，保留软件包签名校验。基础镜像内置 `libzip4` 和 `unzip`，因此 1Panel 重建运行环境并加载已保存的扩展文件时，ZIP 运行库仍然可用。ZIP 扩展本身仍通过 1Panel 的扩展安装脚本安装。

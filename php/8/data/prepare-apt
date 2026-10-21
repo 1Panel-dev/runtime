@@ -1,0 +1,27 @@
+#!/bin/sh
+set -eu
+
+# PHP 7.3/7.4 inherit legacy Debian releases from the official PHP images.
+# Keep archive signatures enabled; only disable archived metadata expiration.
+[ -r /etc/os-release ] || exit 0
+. /etc/os-release
+[ "${ID:-}" = "debian" ] || exit 0
+
+case "${VERSION_CODENAME:-}" in
+    buster)
+        security_suite=buster/updates
+        ;;
+    bullseye)
+        security_suite=bullseye-security
+        ;;
+    *)
+        exit 0
+        ;;
+esac
+
+# The official legacy PHP images use sources.list. The final archive includes
+# point updates, so obsolete separate -updates repositories are unnecessary.
+cat > /etc/apt/sources.list <<EOF
+deb [check-valid-until=no] https://archive.debian.org/debian ${VERSION_CODENAME} main
+deb [check-valid-until=no] https://archive.debian.org/debian-security ${security_suite} main
+EOF
