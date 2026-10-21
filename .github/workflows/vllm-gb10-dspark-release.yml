@@ -1,4 +1,5 @@
 name: Build vLLM GB10 DSpark Image
+run-name: Build vLLM GB10 DSpark Image ${{ inputs.imageVersion }}
 
 on:
   workflow_dispatch:

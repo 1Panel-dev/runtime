@@ -1,4 +1,5 @@
 name: Build Java Image
+run-name: Build Java Image ${{ github.event.inputs.javaVersion }} (${{ github.event.inputs.javaVariant }})
 
 on:
   workflow_dispatch:

@@ -1,4 +1,5 @@
 name: Build PHP 5 Image
+run-name: Build PHP 5 Image ${{ github.event.inputs.php56Version }}
 
 on:
   workflow_dispatch:

@@ -1,4 +1,5 @@
 name: Build PHP 8 Security Images
+run-name: Build PHP 8 Security Images 8.2.35, 8.3.36, 8.4.27, 8.5.12
 
 on:
   workflow_dispatch:
@@ -15,6 +16,7 @@ env:
 
 jobs:
   docker:
+    name: Build PHP Image ${{ matrix.phpVersion }}
     runs-on: ubuntu-24.04
     strategy:
       fail-fast: false

@@ -1,4 +1,5 @@
 name: Build ComfyUI Image
+run-name: Build ComfyUI Image ${{ inputs.comfyuiVersion }}
 
 on:
   workflow_dispatch:
@@ -112,6 +113,7 @@ jobs:
           } >> "${GITHUB_OUTPUT}"
 
   build-amd64:
+    name: Build ComfyUI ${{ needs.resolve.outputs.version }} (amd64)
     needs: resolve
     runs-on: ubuntu-24.04
     outputs:
@@ -142,6 +144,7 @@ jobs:
           outputs: type=image,name=${{ env.IMAGE_NAME }},push-by-digest=true,name-canonical=true,push=true
 
   build-arm64:
+    name: Build ComfyUI ${{ needs.resolve.outputs.version }} (arm64)
     needs: resolve
     runs-on: ubuntu-24.04-arm
     outputs:
@@ -172,6 +175,7 @@ jobs:
           outputs: type=image,name=${{ env.IMAGE_NAME }},push-by-digest=true,name-canonical=true,push=true
 
   create-manifest:
+    name: Publish ComfyUI ${{ needs.resolve.outputs.version }} manifest
     needs: [resolve, build-amd64, build-arm64]
     runs-on: ubuntu-24.04
     steps:

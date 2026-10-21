@@ -1,4 +1,5 @@
 name: Build Node Image
+run-name: Build Node Image ${{ github.event.inputs.nodeVersion }}
 
 on:
   workflow_dispatch:

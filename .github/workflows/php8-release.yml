@@ -1,4 +1,5 @@
 name: Build PHP 8 Image
+run-name: Build PHP 8 Image ${{ github.event.inputs.phpVersion }}
 
 on:
   workflow_dispatch:
