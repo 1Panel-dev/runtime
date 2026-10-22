@@ -41,6 +41,7 @@ jobs:
           context: java
           file: java/Dockerfile
           platforms: ${{ github.event.inputs.platforms }}
+          pull: true
           push: true
           build-args: |
             JAVA_VERSION=${{ github.event.inputs.javaVersion }}
