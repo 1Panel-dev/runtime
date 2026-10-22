@@ -44,7 +44,7 @@ Commit and push the fixes, then select that branch in Actions. Existing images a
 | --- | --- | --- |
 | Build PHP 5 Image | `php56Version=5.6.40` | `5.6.40-fpm` (amd64) |
 | Build PHP 7 Legacy Images | No inputs; builds all three versions | `7.0.33-fpm`, `7.1.33-fpm`, `7.2.34-fpm` |
-| Build PHP 7 Image | `php74Version=7.4.33`, `php74ImageVersion=7.4.34`, `buildPhp73=true`, `php73Version=7.3.33` | `7.4.34-fpm`, `7.3.33-fpm` |
+| Build PHP 7 Image | `buildPhp74=true`, `php74Version=7.4.33`, `php74ImageVersion=7.4.34`, `buildPhp73=true`, `php73Version=7.3.33` | `7.4.34-fpm`, `7.3.33-fpm` |
 | Build PHP 8 Image | Run twice: `phpVersion=8.0.30`, then `8.1.34` | `8.0.31-fpm`, `8.1.35-fpm` |
 
 The legacy PHP 7 Action uses the existing Dockerfiles and preserves the previous workflow's amd64/arm64/arm/v7 platform list; local PECL installation checks cover amd64 only. The alternative `php/5.6` context remains available through CNB. Both 5.6 contexts include the PECL fix.
@@ -52,6 +52,8 @@ The legacy PHP 7 Action uses the existing Dockerfiles and preserves the previous
 For PHP 8.2+, rebuild only images whose PEAR is older than 1.10.17. `Build PHP 8 Security Images` rebuilds the fixed batch `8.2.35`, `8.3.36`, `8.4.27`, `8.5.12`. After publication, pull the updated base image and rebuild the 1Panel runtime.
 
 ## PHP EOL source backports
+
+PHP 5.6.40, 7.0.33, 7.1.33, 7.2.34 and 7.3.33 builds also apply SHA256-pinned local source backports, including the alternate `php/5.6` context. The third-party starting patches have been supplemented with applicable allocation-overflow, VM and request-state changes from PHP's minimal backport. Image tags and internal PHP versions stay unchanged. Use `tests/check-php-legacy-backport.py` for source checks and `tests/check-php-legacy-runtime.py IMAGE` for actual CLI/FPM regressions. These branches remain EOL; provenance, behavior changes and validation instructions are documented below.
 
 PHP 7.4.33, 8.0.30 and 8.1.34 builds apply the official minimal source backports for CVE-2026-109618 / CVE-2026-109619 and rebuild PHP. These branches remain EOL; older patch levels in these series now fail explicitly. `1panel/php:7.4.34-fpm`, `8.0.31-fpm` and `8.1.35-fpm` are 1Panel maintenance image tags based on official PHP 7.4.33, 8.0.30 and 8.1.34 respectively; their internal PHP versions remain unchanged. See [implementation, compatibility changes and validation](php/EOL-BACKPORT.md).
 

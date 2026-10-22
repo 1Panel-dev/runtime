@@ -25,7 +25,7 @@ RUN set -eux; \
 
 # dependencies required for running "phpize"
 # (see persistent deps below)
-ENV PHPIZE_DEPS="autoconf dpkg-dev file g++ gcc libc-dev make pkg-config re2c"
+ENV PHPIZE_DEPS="patch autoconf dpkg-dev file g++ gcc libc-dev make pkg-config re2c"
 
 # persistent / runtime deps
 RUN apt-get update && apt-get install -y \
@@ -78,6 +78,19 @@ RUN set -xe; \
 
 COPY ./data/php-7.0.33.tar.xz /usr/src/php.tar.xz
 COPY --from=php-source /usr/local/bin/docker-php-source /usr/local/bin/
+
+COPY ./data/CVE-2026-109618-109619.patch /usr/local/share/php/security.patch
+
+RUN set -eux; \
+    echo 'ab8c5be6e32b1f8d032909dedaaaa4bbb1a209e519abb01a52ce3914f9a13d96  /usr/src/php.tar.xz' | sha256sum -c -; \
+    echo 'acdc5626caea91e954d06b327ca2bdcc7c223a859385a8be112b26f730206cb4  /usr/local/share/php/security.patch' | sha256sum -c -; \
+    docker-php-source extract; \
+    patch -d /usr/src/php -p1 -F0 -N --dry-run < /usr/local/share/php/security.patch; \
+    patch -d /usr/src/php -p1 -F0 -N < /usr/local/share/php/security.patch; \
+    tar --exclude=.docker-extracted -cJf /tmp/php-patched.tar.xz -C /usr/src php; \
+    mv /tmp/php-patched.tar.xz /usr/src/php.tar.xz; \
+    printf 'PHP 7.0.33\npatch-sha256 acdc5626caea91e954d06b327ca2bdcc7c223a859385a8be112b26f730206cb4\noriginal-source-sha256 ab8c5be6e32b1f8d032909dedaaaa4bbb1a209e519abb01a52ce3914f9a13d96\n' > /usr/local/share/php/eol-backport; \
+    sha256sum /usr/src/php.tar.xz >> /usr/local/share/php/eol-backport
 
 RUN set -eux; \
 	\
@@ -248,3 +261,12 @@ ENTRYPOINT ["supervisord", "--nodaemon", "--configuration", "/etc/supervisord.co
 
 EXPOSE 9000
 WORKDIR /www
+
+RUN set -eu; \
+    php-fpm -t; \
+    status=0; \
+    php -n -d memory_limit=16M -r 'register_shutdown_function(function () { echo "SHUTDOWN_RAN"; }); str_repeat("x", 32 * 1024 * 1024);' > /tmp/backport-oom.log 2>&1 || status=$?; \
+    [ "$status" = 1 ]; \
+    if grep -q SHUTDOWN_RAN /tmp/backport-oom.log; then exit 1; fi; \
+    grep -q 'Allowed memory size' /tmp/backport-oom.log; \
+    rm /tmp/backport-oom.log

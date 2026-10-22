@@ -10,7 +10,24 @@ import textwrap
 root = Path(__file__).resolve().parents[1]
 helper = root / 'php/7/data/rebuild-php-eol'
 assert helper.read_bytes() == (root / 'php/8/data/rebuild-php-eol').read_bytes()
+assert helper.read_bytes() == (root / 'php/5.6/data/rebuild-php-eol').read_bytes()
 assert (root / 'php/7/data/prepare-apt').read_bytes() == (root / 'php/8/data/prepare-apt').read_bytes()
+assert (root / 'php/7/data/prepare-apt').read_bytes() == (root / 'php/5.6/data/prepare-apt').read_bytes()
+
+# Stretch lacks VERSION_CODENAME; all archive cases must retain signature checks.
+with tempfile.TemporaryDirectory() as tmp:
+    directory = Path(tmp)
+    release = directory / 'os-release'
+    sources = directory / 'sources.list'
+    prepare = (root / 'php/7/data/prepare-apt').read_text().replace('/etc/os-release', str(release)).replace('/etc/apt/sources.list', str(sources))
+    for version, codename, suite in [('9', 'stretch', 'stretch/updates'), ('10', 'buster', 'buster/updates'), ('11', 'bullseye', 'bullseye-security')]:
+        release.write_text('ID=debian\nVERSION_ID=' + version + '\n')
+        subprocess.run(['sh', '-eu', '-c', prepare], check=True)
+        text = sources.read_text()
+        protocol = 'http' if version == '9' else 'https'
+        assert f'{protocol}://archive.debian.org/debian {codename} main' in text
+        assert f'{protocol}://archive.debian.org/debian-security {suite} main' in text
+        assert 'trusted=yes' not in text and 'allow-insecure' not in text
 for branch in ('7', '8'):
     dockerfile = (root / f'php/{branch}/Dockerfile').read_text()
     assert dockerfile.startswith('ARG PHP_VERSION\nFROM php:${PHP_VERSION}-fpm\n')
@@ -27,7 +44,9 @@ with tempfile.TemporaryDirectory() as tmp:
         path = bindir / command
         path.write_text('#!/bin/sh\necho BUILD_COMMAND_REACHED >&2\nexit 99\n')
         path.chmod(0o755)
-    cases = [('7.3.33', True), ('8.2.35', True), ('8.3.36', True), ('8.4.27', True), ('8.5.12', True),
+    cases = [('8.2.35', True), ('8.3.36', True), ('8.4.27', True), ('8.5.12', True),
+             ('5.6.39', False), ('7.3.32', False), ('7.3.34', False),
+             ('5.5.38', False), ('7.0.33', False), ('7.1.33', False), ('7.2.34', False),
              ('7.4.32', False), ('7.4.34', False), ('8.0.29', False), ('8.1.33', False), ('8.1.35', False)]
     for version, success in cases:
         env = dict(os.environ, PATH=str(bindir) + os.pathsep + os.environ['PATH'], TEST_VERSION=version)
@@ -51,6 +70,8 @@ with tempfile.TemporaryDirectory() as tmp:
         assert (context / 'data/prepare-apt').is_file()
         assert 'RUN sh /usr/local/bin/rebuild-php-eol' in (context / 'Dockerfile').read_text()
 php7 = (root / '.github/workflows/php7-release.yml').read_text()
+assert "buildPhp74:\n        description: 'Build and publish PHP 7.4'\n        type: boolean\n        default: true" in php7
+assert 'Build PHP-7.4 and Push\n        if: ${{ inputs.buildPhp74 }}' in php7
 assert "php74Version:\n        description: 'Official PHP 7.4 base version (7.4.33)'\n        default: '7.4.33'" in php7
 assert "php74ImageVersion:\n        description: '1Panel maintenance image version (PHP remains 7.4.33)'\n        default: '7.4.34'" in php7
 assert 'PHP_VERSION=${{ github.event.inputs.php74Version }}' in php7

@@ -1,0 +1,39 @@
+#!/bin/sh
+set -eu
+
+# Legacy PHP images inherit archived Debian releases.
+# Keep archive signatures enabled; only disable archived metadata expiration.
+[ -r /etc/os-release ] || exit 0
+. /etc/os-release
+[ "${ID:-}" = "debian" ] || exit 0
+
+if [ -z "${VERSION_CODENAME:-}" ]; then
+    case "${VERSION_ID:-}" in
+        9) VERSION_CODENAME=stretch ;;
+        10) VERSION_CODENAME=buster ;;
+        11) VERSION_CODENAME=bullseye ;;
+    esac
+fi
+
+case "${VERSION_CODENAME:-}" in
+    stretch|buster)
+        security_suite=$VERSION_CODENAME/updates
+        ;;
+    bullseye)
+        security_suite=bullseye-security
+        ;;
+    *)
+        exit 0
+        ;;
+esac
+
+archive_url=https://archive.debian.org
+# Stretch's slim image has no apt HTTPS transport; signed metadata still applies.
+if [ "$VERSION_CODENAME" = stretch ]; then archive_url=http://archive.debian.org; fi
+
+# The official legacy PHP images use sources.list. The final archive includes
+# point updates, so obsolete separate -updates repositories are unnecessary.
+cat > /etc/apt/sources.list <<EOF
+deb [check-valid-until=no] ${archive_url}/debian ${VERSION_CODENAME} main
+deb [check-valid-until=no] ${archive_url}/debian-security ${security_suite} main
+EOF

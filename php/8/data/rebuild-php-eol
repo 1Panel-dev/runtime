@@ -4,7 +4,20 @@ set -eu
 fail() { echo "PHP EOL backport: $*" >&2; exit 1; }
 
 select_backport() {
+    local_patch=
     case "$1" in
+        5.6.40)
+            commit=local-legacy-5.6.40
+            patch_sha=7544944d5389d675b3f425b0bebc6abf86e1ff40b43c99b57d7c5d12370842fc
+            source_sha=1369a51eee3995d7fbd1c5342e5cc917760e276d561595b6052b21ace2656d1c
+            local_patch=/usr/local/share/php/backports/5.6.40.patch
+            ;;
+        7.3.33)
+            commit=local-legacy-7.3.33
+            patch_sha=82559352b284faea037aea670d044ed0c037071f4eba1065d546aa73c92bc579
+            source_sha=166eaccde933381da9516a2b70ad0f447d7cec4b603d07b9a916032b215b90cc
+            local_patch=/usr/local/share/php/backports/7.3.33.patch
+            ;;
         7.4.33)
             commit=712e60f9edfd03f0960fc4fc3c2c375f42b90aa2
             patch_sha=5fe57ca6ee96d59b36c6e0ca842843c50884f177bef1e85234cf669b577f5e48
@@ -20,7 +33,7 @@ select_backport() {
             patch_sha=c85ad0fddcbff7f2318617eeaa54d271135463b5bf70a01228447e3ed78de96e
             source_sha=ffa9e0982e82eeaea848f57687b425ed173aa278fe563001310ae2638db5c251
             ;;
-        7.4.*|8.0.*|8.1.*) fail "unsupported baseline $1; use 7.4.33, 8.0.30 or 8.1.34" ;;
+        5.*|7.*|8.0.*|8.1.*) fail "unsupported baseline $1; use 5.6.40, 7.3.33, 7.4.33, 8.0.30 or 8.1.34; PHP 7.0-7.2 use their source-build contexts" ;;
         *) return 1 ;;
     esac
 }
@@ -78,10 +91,17 @@ saved_apt_mark=$(apt-mark showmanual)
 sh /usr/local/bin/prepare-apt
 apt-get update
 # Same build dependencies as the official Debian FPM images, plus patch.
-apt-get install -y --no-install-recommends $PHPIZE_DEPS patch \
-    libargon2-dev libcurl4-openssl-dev libonig-dev libreadline-dev \
-    libsodium-dev libsqlite3-dev libssl-dev libxml2-dev zlib1g-dev
-curl -fsSL --retry 3 "https://github.com/php/php-src/commit/$commit.patch" -o "$tmp/security.patch"
+case "$version" in
+    5.6.40) build_deps='libcurl4-openssl-dev libedit-dev libsqlite3-dev libssl1.0-dev libxml2-dev zlib1g-dev' ;;
+    7.3.33) build_deps='libargon2-dev libcurl4-openssl-dev libedit-dev libreadline-dev libsodium-dev libsqlite3-dev libssl-dev libxml2-dev zlib1g-dev' ;;
+    *) build_deps='libargon2-dev libcurl4-openssl-dev libonig-dev libreadline-dev libsodium-dev libsqlite3-dev libssl-dev libxml2-dev zlib1g-dev' ;;
+esac
+apt-get install -y --no-install-recommends $PHPIZE_DEPS patch $build_deps
+if [ -n "$local_patch" ]; then
+    cp "$local_patch" "$tmp/security.patch"
+else
+    curl -fsSL --retry 3 "https://github.com/php/php-src/commit/$commit.patch" -o "$tmp/security.patch"
+fi
 verify_inputs /usr/src/php.tar.xz "$tmp/security.patch"
 docker-php-source extract
 apply_backport /usr/src/php "$tmp/security.patch"
@@ -99,8 +119,11 @@ if [ ! -d /usr/include/curl ] && [ ! -e /usr/local/include/curl ]; then
     ln -s "/usr/include/$deb_multiarch/curl" /usr/local/include/curl
 fi
 # php-config emits space-separated official flags with quotes removed; no eval.
+build_options=$configure_options
+# PHP 5.6 also prints unquoted compiler-variable assignments; export them above.
+if [ "$version" = 5.6.40 ]; then build_options=${configure_options%% CFLAGS=*}; fi
 set -f
-./configure $configure_options
+./configure $build_options
 set +f
 make -j 2
 make install

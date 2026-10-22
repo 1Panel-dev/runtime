@@ -5,13 +5,17 @@ COPY ./data/install-php-extensions  /usr/local/bin/
 COPY ./data/composer /usr/bin/composer
 COPY ./data/php-fpm.ini /etc/supervisor.d/php-fpm.ini
 COPY ./data/supervisord.conf /etc/supervisord.conf
+COPY ./data/rebuild-php-eol ./data/prepare-apt /usr/local/bin/
+COPY ./data/CVE-2026-109618-109619.patch /usr/local/share/php/backports/5.6.40.patch
 
-RUN echo "deb http://archive.debian.org/debian/ stretch main contrib non-free" > /etc/apt/sources.list && \
-    echo "deb http://archive.debian.org/debian-security/ stretch/updates main contrib non-free" >> /etc/apt/sources.list 
-    
-RUN apt-get -qq update -o Acquire::AllowInsecureRepositories=true -o Acquire::AllowDowngradeToInsecureRepositories=true -o APT::Get::AllowUnauthenticated=true && \
-    DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends --no-install-suggests -o APT::Get::AllowUnauthenticated=true debian-archive-keyring && \
-    apt-get update && \
+# Bootstrap current archive signing keys over HTTPS before using signed Stretch metadata.
+RUN curl -fsSL --retry 3 https://archive.debian.org/debian/pool/main/d/debian-archive-keyring/debian-archive-keyring_2021.1.1+deb11u1_all.deb -o /tmp/archive-keyring.deb && \
+    echo '28ca7749ab7978f3c571732c3aa1c56e3ad1d5db3c915293763d4f6cb8fcce89  /tmp/archive-keyring.deb' | sha256sum -c - && \
+    dpkg -i /tmp/archive-keyring.deb && rm /tmp/archive-keyring.deb
+
+RUN sh /usr/local/bin/rebuild-php-eol
+
+RUN apt-get update && \
     apt-get install -y supervisor iputils-ping && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*

@@ -23,6 +23,7 @@ RUN set -eux; \
 # dependencies required for running "phpize"
 # (see persistent deps below)
 ENV PHPIZE_DEPS \
+		patch \
 		autoconf \
 		dpkg-dev \
 		file \
@@ -106,6 +107,19 @@ RUN cd /tmp && \
     rm -rf /tmp/openssl-1.0.2u* &&\
     echo '/usr/local/ssl/lib' > /etc/ld.so.conf.d/openssl.conf && \
     ldconfig  /usr/local/openssl/lib
+
+COPY ./data/CVE-2026-109618-109619.patch /usr/local/share/php/security.patch
+
+RUN set -eux; \
+    echo '1369a51eee3995d7fbd1c5342e5cc917760e276d561595b6052b21ace2656d1c  /usr/src/php.tar.xz' | sha256sum -c -; \
+    echo '7544944d5389d675b3f425b0bebc6abf86e1ff40b43c99b57d7c5d12370842fc  /usr/local/share/php/security.patch' | sha256sum -c -; \
+    docker-php-source extract; \
+    patch -d /usr/src/php -p1 -F0 -N --dry-run < /usr/local/share/php/security.patch; \
+    patch -d /usr/src/php -p1 -F0 -N < /usr/local/share/php/security.patch; \
+    tar --exclude=.docker-extracted -cJf /tmp/php-patched.tar.xz -C /usr/src php; \
+    mv /tmp/php-patched.tar.xz /usr/src/php.tar.xz; \
+    printf 'PHP 5.6.40\npatch-sha256 7544944d5389d675b3f425b0bebc6abf86e1ff40b43c99b57d7c5d12370842fc\noriginal-source-sha256 1369a51eee3995d7fbd1c5342e5cc917760e276d561595b6052b21ace2656d1c\n' > /usr/local/share/php/eol-backport; \
+    sha256sum /usr/src/php.tar.xz >> /usr/local/share/php/eol-backport
 
 RUN set -eux; \
 	cd /tmp; \
@@ -261,3 +275,12 @@ ENTRYPOINT ["supervisord", "--nodaemon", "--configuration", "/etc/supervisord.co
 
 EXPOSE 9000
 WORKDIR /www
+
+RUN set -eu; \
+    php-fpm -t; \
+    status=0; \
+    php -n -d memory_limit=16M -r 'register_shutdown_function(function () { echo "SHUTDOWN_RAN"; }); str_repeat("x", 32 * 1024 * 1024);' > /tmp/backport-oom.log 2>&1 || status=$?; \
+    [ "$status" = 1 ]; \
+    if grep -q SHUTDOWN_RAN /tmp/backport-oom.log; then exit 1; fi; \
+    grep -q 'Allowed memory size' /tmp/backport-oom.log; \
+    rm /tmp/backport-oom.log

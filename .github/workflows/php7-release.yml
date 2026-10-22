@@ -4,6 +4,11 @@ run-name: Build PHP 7 Image ${{ github.event.inputs.php74ImageVersion }}, ${{ gi
 on:
   workflow_dispatch:
     inputs:
+      buildPhp74:
+        description: 'Build and publish PHP 7.4'
+        type: boolean
+        default: true
+        required: false
       php74Version:
         description: 'Official PHP 7.4 base version (7.4.33)'
         default: '7.4.33'
@@ -42,6 +47,7 @@ jobs:
           password: ${{ secrets.DOCKERHUB_PASSWORD }}
 
       - name: Build PHP-7.4 and Push
+        if: ${{ inputs.buildPhp74 }}
         uses: docker/build-push-action@v6
         with:
           context: php/7
