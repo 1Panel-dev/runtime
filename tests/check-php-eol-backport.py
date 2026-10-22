@@ -76,7 +76,16 @@ assert "php74Version:\n        description: 'Official PHP 7.4 base version (7.4.
 assert "php74ImageVersion:\n        description: '1Panel maintenance image version (PHP remains 7.4.33)'\n        default: '7.4.34'" in php7
 assert 'PHP_VERSION=${{ github.event.inputs.php74Version }}' in php7
 assert '1panel/php:${{ github.event.inputs.php74ImageVersion }}-fpm' in php7
-assert '1panel/php:${{ github.event.inputs.php73Version }}-fpm' in php7
+assert "php73Version:\n        description: 'Official PHP 7.3 base version (7.3.33)'\n        default: '7.3.33'" in php7
+assert "php73ImageVersion:\n        description: '1Panel maintenance image version (PHP remains 7.3.33)'\n        default: '7.3.34'" in php7
+assert 'PHP_VERSION=${{ github.event.inputs.php73Version }}' in php7
+assert '1panel/php:${{ github.event.inputs.php73ImageVersion }}-fpm' in php7
+assert '1panel/php:${{ github.event.inputs.php73Version }}-fpm' not in php7
+php5 = (root / '.github/workflows/php5-release.yml').read_text()
+assert "php56Version:\n        description: '1Panel maintenance image version (PHP remains 5.6.40)'\n        default: '5.6.41'" in php5
+assert 'context: php/5.6.40' in php5 and 'file: php/5.6.40/Dockerfile' in php5
+assert '1panel/php:${{ github.event.inputs.php56Version }}-fpm' in php5
+assert 'PHP_VERSION=${{ github.event.inputs.php56Version }}' not in php5
 assert "buildPhp73:\n        description: 'Also build and publish PHP 7.3'\n        type: boolean\n        default: true" in php7
 assert 'Build PHP-7.3 and Push\n        if: ${{ inputs.buildPhp73 }}' in php7
 cnb = (root / '.cnb.yml').read_text()
@@ -87,12 +96,14 @@ assert 'PHP_VERSION=${{ github.event.inputs.phpVersion }}' in php8
 assert '1panel/php:${{ steps.image.outputs.version }}-fpm' in php8
 tag_step = textwrap.dedent(php8.split('        run: |\n', 1)[1].split('\n      - name:', 1)[0])
 cnb_step = textwrap.dedent(cnb.split('web_trigger_build_php_image:', 1)[1].split('          script: |\n', 1)[1].split('\n          exports:', 1)[0])
-for base, expected in [('7.4.33', '7.4.34'), ('8.0.30', '8.0.31'), ('8.1.34', '8.1.35'),
+for base, expected in [('5.6.40', '5.6.41'), ('7.0.33', '7.0.34'), ('7.1.33', '7.1.34'),
+                       ('7.2.34', '7.2.35'), ('7.3.33', '7.3.34'),
+                       ('7.4.33', '7.4.34'), ('8.0.30', '8.0.31'), ('8.1.34', '8.1.35'),
                        ('8.2.35', '8.2.35'), ('8.3.36', '8.3.36'), ('8.4.27', '8.4.27'), ('8.5.12', '8.5.12')]:
     with tempfile.TemporaryDirectory() as tmp:
         output = Path(tmp) / 'output'
         env = dict(os.environ, PHP_VERSION=base, PHP_IMAGE_VERSION='', DOCKER_REGISTRY='registry', DOCKER_GROUP='1panel', GITHUB_OUTPUT=str(output))
-        if not base.startswith('7.'):
+        if base.startswith('8.'):
             subprocess.run(['sh', '-eu', '-c', tag_step], env=env, check=True)
             assert output.read_text().strip() == 'version=' + expected
         tag = subprocess.check_output(['sh', '-eu', '-c', cnb_step], env=env, text=True)

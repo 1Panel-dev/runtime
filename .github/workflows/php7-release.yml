@@ -1,5 +1,5 @@
 name: Build PHP 7 Image
-run-name: Build PHP 7 Image ${{ github.event.inputs.php74ImageVersion }}, ${{ github.event.inputs.php73Version }}
+run-name: Build PHP 7 Image ${{ github.event.inputs.php74ImageVersion }}, ${{ github.event.inputs.php73ImageVersion }}
 
 on:
   workflow_dispatch:
@@ -23,8 +23,12 @@ on:
         default: true
         required: false
       php73Version:
-        description: 'PHP 7.3 Version'
+        description: 'Official PHP 7.3 base version (7.3.33)'
         default: '7.3.33'
+        required: true
+      php73ImageVersion:
+        description: '1Panel maintenance image version (PHP remains 7.3.33)'
+        default: '7.3.34'
         required: true
 
 jobs:
@@ -72,6 +76,6 @@ jobs:
           build-args:
             PHP_VERSION=${{ github.event.inputs.php73Version }}
           tags: |
-            1panel/php:${{ github.event.inputs.php73Version }}-fpm
+            1panel/php:${{ github.event.inputs.php73ImageVersion }}-fpm
           cache-from: type=gha
           cache-to: type=gha,mode=max

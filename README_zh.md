@@ -42,9 +42,9 @@ PHP 5.6、PHP 7 和 PHP 8 镜像在编译 PHP 后安装固定版本、校验 SHA
 
 | Action | 参数 | 发布的 `1panel/php` 标签 |
 | --- | --- | --- |
-| Build PHP 5 Image | `php56Version=5.6.40` | `5.6.40-fpm`（amd64） |
-| Build PHP 7 Legacy Images | 无参数，一次构建三个版本 | `7.0.33-fpm`、`7.1.33-fpm`、`7.2.34-fpm` |
-| Build PHP 7 Image | `buildPhp74=true`、`php74Version=7.4.33`、`php74ImageVersion=7.4.34`、`buildPhp73=true`、`php73Version=7.3.33` | `7.4.34-fpm`、`7.3.33-fpm` |
+| Build PHP 5 Image | `php56Version=5.6.41` | `5.6.41-fpm`（amd64） |
+| Build PHP 7 Legacy Images | 无参数，一次构建三个版本 | `7.0.34-fpm`、`7.1.34-fpm`、`7.2.35-fpm` |
+| Build PHP 7 Image | `buildPhp74=true`、`php74Version=7.4.33`、`php74ImageVersion=7.4.34`、`buildPhp73=true`、`php73Version=7.3.33`、`php73ImageVersion=7.3.34` | `7.4.34-fpm`、`7.3.34-fpm` |
 | Build PHP 8 Image | 分别运行两次：`phpVersion=8.0.30`、`8.1.34` | `8.0.31-fpm`、`8.1.35-fpm` |
 
 旧 PHP 7 Action 使用已有 Dockerfile，保留此前工作流的 amd64/arm64/arm/v7 平台列表；本地 PECL 安装验证仅覆盖 amd64。备用 `php/5.6` 构建目录仍可通过 CNB 选择，两个 5.6 目录均包含 PECL 修复。
@@ -53,7 +53,7 @@ PHP 8.2+ 仅在镜像内 PEAR 低于 1.10.17 时需要为本问题重打。`Buil
 
 ## PHP EOL 源码回补
 
-PHP 5.6.40、7.0.33、7.1.33、7.2.34 和 7.3.33 的构建也会应用固定 SHA256 的本地源码回补。补丁以第三方回补为起点，并补齐官方最小回补中适用于各旧分支的分配溢出、VM 和请求状态清理等改动；备用 `php/5.6` 入口同样覆盖。镜像标签和内部 PHP 版本保持原值。源码校验使用 `tests/check-php-legacy-backport.py`，实际 CLI/FPM 回归使用 `tests/check-php-legacy-runtime.py IMAGE`。这些旧分支仍为 EOL，详细来源、行为变化和验证方式见下方说明。
+PHP 5.6.40、7.0.33、7.1.33、7.2.34 和 7.3.33 的构建也会应用固定 SHA256 的本地源码回补。补丁以第三方回补为起点，并补齐官方最小回补中适用于各旧分支的分配溢出、VM 和请求状态清理等改动；备用 `php/5.6` 入口同样覆盖。维护版镜像标签分别为 `5.6.41-fpm`、`7.0.34-fpm`、`7.1.34-fpm`、`7.2.35-fpm`、`7.3.34-fpm`，内部 PHP 版本仍保留上述真实基线。源码校验使用 `tests/check-php-legacy-backport.py`，实际 CLI/FPM 回归使用 `tests/check-php-legacy-runtime.py IMAGE`。这些旧分支仍为 EOL，详细来源、行为变化和验证方式见下方说明。
 
 PHP 7.4.33、8.0.30 和 8.1.34 构建会应用官方针对 CVE-2026-109618 / CVE-2026-109619 的最小源码回补并重新编译 PHP。这些分支仍为 EOL，同系列更早的补丁版本现在会明确失败。`1panel/php:7.4.34-fpm`、`8.0.31-fpm` 和 `8.1.35-fpm` 为 1Panel 维护版镜像标签，分别基于官方 PHP 7.4.33、8.0.30、8.1.34 加上述回补，内部 PHP 版本保持原值。详见[实现、兼容性变化和验证说明](php/EOL-BACKPORT.md)。
 

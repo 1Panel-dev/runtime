@@ -2,7 +2,7 @@
 
 ## PHP 5.6 and 7.0–7.3
 
-The exact baselines **5.6.40, 7.0.33, 7.1.33, 7.2.34 and 7.3.33** also receive locally maintained source backports. These are not official PHP security releases or continued support for these branches. Internal PHP versions and the existing image tags remain unchanged.
+The exact baselines **5.6.40, 7.0.33, 7.1.33, 7.2.34 and 7.3.33** also receive locally maintained source backports. These are not official PHP security releases or continued support for these branches. Internal PHP versions remain unchanged; publication uses the distinct 1Panel maintenance image tags listed below.
 
 The starting patches are from [vperetti's backports at `6296d6baf05cd2e727e66d38b8f33caf60d90896`](https://github.com/vperetti/php-cve-2026-109618-109619-backports/tree/6296d6baf05cd2e727e66d38b8f33caf60d90896). They have been supplemented by comparison with the PHP project's [7.4 minimal backport](https://github.com/php/php-src/commit/712e60f9edfd03f0960fc4fc3c2c375f42b90aa2):
 
@@ -85,19 +85,31 @@ These are **1Panel maintenance image tags**, not new official PHP releases:
 
 | Official base / internal PHP version | 1Panel output image |
 | --- | --- |
+| 5.6.40 | `1panel/php:5.6.41-fpm` |
+| 7.0.33 | `1panel/php:7.0.34-fpm` |
+| 7.1.33 | `1panel/php:7.1.34-fpm` |
+| 7.2.34 | `1panel/php:7.2.35-fpm` |
+| 7.3.33 | `1panel/php:7.3.34-fpm` |
 | 7.4.33 | `1panel/php:7.4.34-fpm` |
 | 8.0.30 | `1panel/php:8.0.31-fpm` |
 | 8.1.34 | `1panel/php:8.1.35-fpm` |
 
 `php -v`, `PHP_VERSION`, `php-config`, source checksums and every `FROM php:${PHP_VERSION}-fpm` retain the real official baseline in the left column. Do not pass the maintenance tag version as the Docker build's `PHP_VERSION`.
 
-The PHP 7 workflow has separate inputs: `php74Version` defaults to `7.4.33` (base), and `php74ImageVersion` defaults to `7.4.34` (output image). Both `buildPhp74` and `buildPhp73` default to true. Set `buildPhp73=false` to publish only the 7.4 maintenance image, or `buildPhp74=false` to publish only 7.3. The normal PHP 8 workflow maps the exact inputs `8.0.30` and `8.1.34` to maintenance output tags; all other inputs, including 8.2+, keep their previous output tags. Its input names/defaults and Docker build argument are unchanged. The four-version PHP 8 security workflow is unchanged.
+The PHP 5 workflow keeps its existing `php56Version` input for the output tag only, now defaulting to `5.6.41`; its source context remains fixed at `php/5.6.40`. The legacy PHP 7 matrix keeps each source baseline in `phpVersion` and stores its maintenance tag in `imageVersion`, preserving the existing source directories, cache scopes and platform list.
 
-CNB's PHP build accepts optional `PHP_IMAGE_VERSION`. When blank, the three exact EOL baselines above map to their maintenance tags; all other versions keep the original `PHP_VERSION` output tag. An explicit `PHP_IMAGE_VERSION` overrides only the output tag. For example, set `DIR=7`, `PHP_VERSION=7.4.33` (or `DIR=8`, `PHP_VERSION=8.0.30` / `8.1.34`). The Docker build argument remains `PHP_VERSION`.
+The PHP 7 workflow has separate inputs: `php74Version` defaults to `7.4.33` (base), and `php74ImageVersion` defaults to `7.4.34` (output image). `php73Version=7.3.33` and `php73ImageVersion=7.3.34` provide the same base/output separation for 7.3. Both `buildPhp74` and `buildPhp73` default to true. Set `buildPhp73=false` to publish only the 7.4 maintenance image, or `buildPhp74=false` to publish only 7.3. The normal PHP 8 workflow maps the exact inputs `8.0.30` and `8.1.34` to maintenance output tags; all other inputs, including 8.2+, keep their previous output tags. Its input names/defaults and Docker build argument are unchanged. The four-version PHP 8 security workflow is unchanged.
+
+CNB's PHP build accepts optional `PHP_IMAGE_VERSION`. When blank, the eight exact EOL baselines above map to their maintenance tags; all other versions keep the original `PHP_VERSION` output tag. An explicit `PHP_IMAGE_VERSION` overrides only the output tag. For example, set `DIR=7`, `PHP_VERSION=7.4.33` (or `DIR=8`, `PHP_VERSION=8.0.30` / `8.1.34`). The Docker build argument remains `PHP_VERSION`.
 
 For direct builds:
 
 ```sh
+docker build -t 1panel/php:5.6.41-fpm php/5.6.40
+docker build -t 1panel/php:7.0.34-fpm php/7.0.33
+docker build -t 1panel/php:7.1.34-fpm php/7.1.33
+docker build -t 1panel/php:7.2.35-fpm php/7.2.34
+docker build --build-arg PHP_VERSION=7.3.33 -t 1panel/php:7.3.34-fpm php/7
 docker build --build-arg PHP_VERSION=7.4.33 -t 1panel/php:7.4.34-fpm php/7
 docker build --build-arg PHP_VERSION=8.0.30 -t 1panel/php:8.0.31-fpm php/8
 docker build --build-arg PHP_VERSION=8.1.34 -t 1panel/php:8.1.35-fpm php/8

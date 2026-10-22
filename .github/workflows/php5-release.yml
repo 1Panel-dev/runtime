@@ -5,8 +5,8 @@ on:
   workflow_dispatch:
     inputs:
       php56Version:
-        description: 'PHP 5.6 Version'
-        default: '5.6.40'
+        description: '1Panel maintenance image version (PHP remains 5.6.40)'
+        default: '5.6.41'
         required: true
 
 jobs:
