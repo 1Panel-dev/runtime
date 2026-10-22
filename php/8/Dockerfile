@@ -10,6 +10,13 @@ COPY ./data/prepare-apt /usr/local/bin/
 # Rebuild only the exact EOL baselines; all other series return immediately.
 RUN sh /usr/local/bin/rebuild-php-eol
 
+# PEAR before 1.10.17 cannot decode PECL's chunked HTTP responses.
+RUN curl -fsSL --retry 3 https://pear.php.net/get/PEAR-1.10.18.tgz -o /tmp/PEAR.tgz && \
+    echo '276db000b4e0a9388c7f5168522174bae4144c8c411a71d480b82ec25ee3bc8b  /tmp/PEAR.tgz' | sha256sum -c - && \
+    pear upgrade --offline --loose /tmp/PEAR.tgz && \
+    pecl channel-update https://pecl.php.net/channel.xml && \
+    rm -rf /tmp/PEAR.tgz /tmp/pear
+
 RUN apt-get update && \
     apt-get install -y --no-install-recommends supervisor && \
     mkdir -p /var/log/supervisor /etc/supervisor/conf.d && \

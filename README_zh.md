@@ -30,6 +30,27 @@
 
 `Build PHP 8 Security Images` 从固定上游提交的 Dockerfile 构建 PHP 8.2.35、8.3.36、8.4.27 和 8.5.12，不依赖尚未发布的官方基础镜像标签。详见[源码来源和构建说明](php/8/upstream/README.md)。
 
+## PHP 扩展下载
+
+PHP 5.6、PHP 7 和 PHP 8 镜像在编译 PHP 后安装固定版本、校验 SHA256 的 PEAR 1.10.18。独立的 5.6/7.0–7.2 构建目录先离线升级固定版本并校验 SHA256 的 Archive_Tar 1.4.14，以满足其依赖。PHP 5.6 通过 `SSL_CERT_FILE` 使用系统 CA 证书包，保留证书校验。其中包含上游的 [HTTP 分块响应修复](https://github.com/pear/pear-core/pull/152)，避免 PECL 元数据解析报 `does not have REST info xml available`。通过 curl 下载后离线升级，避免旧版 PEAR 下载器无法下载自身更新。
+
+构建镜像后运行 `bash tests/check-php-pecl.sh IMAGE`，在临时容器中下载、编译、加载 APCu 并检查缓存读写。PHP 5.6 自动选择 APCu 4.0.11，此检查需要联网。运行 `python3 tests/check-php-pecl-source.py` 可离线检查全部七个构建目录及发布入口。
+
+## 重新发布 PHP 镜像
+
+先提交并推送修复，在 Actions 中选择包含修复的分支。已发布镜像和运行中的容器不会自动获得 Dockerfile 修改。
+
+| Action | 参数 | 发布的 `1panel/php` 标签 |
+| --- | --- | --- |
+| Build PHP 5 Image | `php56Version=5.6.40` | `5.6.40-fpm`（amd64） |
+| Build PHP 7 Legacy Images | 无参数，一次构建三个版本 | `7.0.33-fpm`、`7.1.33-fpm`、`7.2.34-fpm` |
+| Build PHP 7 Image | `php74Version=7.4.33`、`php74ImageVersion=7.4.34`、`buildPhp73=true`、`php73Version=7.3.33` | `7.4.34-fpm`、`7.3.33-fpm` |
+| Build PHP 8 Image | 分别运行两次：`phpVersion=8.0.30`、`8.1.34` | `8.0.31-fpm`、`8.1.35-fpm` |
+
+旧 PHP 7 Action 使用已有 Dockerfile，保留此前工作流的 amd64/arm64/arm/v7 平台列表；本地 PECL 安装验证仅覆盖 amd64。备用 `php/5.6` 构建目录仍可通过 CNB 选择，两个 5.6 目录均包含 PECL 修复。
+
+PHP 8.2+ 仅在镜像内 PEAR 低于 1.10.17 时需要为本问题重打。`Build PHP 8 Security Images` 会重建固定的 `8.2.35`、`8.3.36`、`8.4.27`、`8.5.12` 四个版本。发布后重新拉取基础镜像，再重建 1Panel 运行环境。
+
 ## PHP EOL 源码回补
 
 PHP 7.4.33、8.0.30 和 8.1.34 构建会应用官方针对 CVE-2026-109618 / CVE-2026-109619 的最小源码回补并重新编译 PHP。这些分支仍为 EOL，同系列更早的补丁版本现在会明确失败。`1panel/php:7.4.34-fpm`、`8.0.31-fpm` 和 `8.1.35-fpm` 为 1Panel 维护版镜像标签，分别基于官方 PHP 7.4.33、8.0.30、8.1.34 加上述回补，内部 PHP 版本保持原值。详见[实现、兼容性变化和验证说明](php/EOL-BACKPORT.md)。

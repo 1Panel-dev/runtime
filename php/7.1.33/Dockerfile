@@ -7,6 +7,12 @@ FROM php:7.1.33-fpm AS php-source
 
 FROM debian:bullseye-slim
 
+# Signed archives work before ca-certificates is installed in the slim base.
+RUN printf '%s\n' \
+    'deb [check-valid-until=no] http://archive.debian.org/debian bullseye main' \
+    'deb [check-valid-until=no] http://archive.debian.org/debian-security bullseye-security main' \
+    > /etc/apt/sources.list
+
 # prevent Debian's PHP packages from being installed
 # https://github.com/docker-library/php/pull/542
 RUN set -eux; \
@@ -163,8 +169,15 @@ RUN set -eux; \
 	apt-get purge -y --auto-remove -o APT::AutoRemove::RecommendsImportant=false; \
 	\
 # update pecl channel definitions https://github.com/docker-library/php/issues/443
-	pecl update-channels; \
-	rm -rf /tmp/pear ~/.pearrc; \
+# Bootstrap a fixed downloader before requesting any PECL metadata.
+	curl -fsSL --retry 3 https://pear.php.net/get/Archive_Tar-1.4.14.tgz -o /tmp/Archive_Tar.tgz; \
+	echo '4af263e4fdfcb400f888f84cccf8d05d1be2eb78128349431405b2ffb0c0c9f4  /tmp/Archive_Tar.tgz' | sha256sum -c -; \
+	pear upgrade --offline --loose /tmp/Archive_Tar.tgz; \
+	curl -fsSL --retry 3 https://pear.php.net/get/PEAR-1.10.18.tgz -o /tmp/PEAR.tgz; \
+	echo '276db000b4e0a9388c7f5168522174bae4144c8c411a71d480b82ec25ee3bc8b  /tmp/PEAR.tgz' | sha256sum -c -; \
+	pear upgrade --offline --loose /tmp/PEAR.tgz; \
+	pecl channel-update https://pecl.php.net/channel.xml; \
+	rm -rf /tmp/Archive_Tar.tgz /tmp/PEAR.tgz /tmp/pear ~/.pearrc; \
 # smoke test
 	php --version
 
