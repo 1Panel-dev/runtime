@@ -1,5 +1,5 @@
 name: Build OpenClaw Image
-run-name: Build OpenClaw Image ${{ github.event.inputs.openclawTag || github.ref_name }}
+run-name: Build OpenClaw Image ${{ github.event.inputs.dockerTag || github.event.inputs.openclawTag || github.ref_name }}
 
 on:
   push:
@@ -8,12 +8,16 @@ on:
   workflow_dispatch:
     inputs:
       openclawTag:
-        default: "2026.10.5"
-        description: "OpenClaw release and Docker Hub tag, for example 2026.10.5"
+        default: "2026.10.7"
+        description: "Upstream OpenClaw release without v, for example 2026.10.7"
         required: true
+      dockerTag:
+        description: "Docker Hub tag; leave empty to use the release (test example: 2026.10.7-feishu-test.1)"
+        required: false
       pushLatest:
-        description: "Push latest tag"
-        default: "true"
+        description: "Also push latest tag"
+        type: boolean
+        default: false
         required: true
 
 env:
@@ -36,6 +40,7 @@ jobs:
         env:
           EVENT_NAME: ${{ github.event_name }}
           INPUT_OPENCLAW_TAG: ${{ github.event.inputs.openclawTag }}
+          INPUT_DOCKER_TAG: ${{ github.event.inputs.dockerTag }}
           INPUT_PUSH_LATEST: ${{ github.event.inputs.pushLatest }}
           REF_NAME: ${{ github.ref_name }}
         run: |
@@ -43,14 +48,25 @@ jobs:
 
           if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
             openclaw_tag="${INPUT_OPENCLAW_TAG}"
-            push_latest="${INPUT_PUSH_LATEST:-true}"
+            dockerhub_tag="${INPUT_DOCKER_TAG:-$openclaw_tag}"
+            push_latest="${INPUT_PUSH_LATEST:-false}"
           else
             openclaw_tag="${REF_NAME#v}"
+            dockerhub_tag="$openclaw_tag"
             push_latest="true"
           fi
 
-          if [ -z "$openclaw_tag" ]; then
-            echo "::error::Failed to resolve OpenClaw tag"
+          if [[ ! "$openclaw_tag" =~ ^[0-9]+\.[0-9]+\.[0-9]+([.-][A-Za-z0-9]+)*$ ]]; then
+            echo "::error::Invalid OpenClaw release; use a version without the v prefix"
+            exit 1
+          fi
+          # Leave room for the -amd64 and -arm64 suffixes within Docker's 128-character limit.
+          if [[ ! "$dockerhub_tag" =~ ^[A-Za-z0-9_][A-Za-z0-9_.-]{0,121}$ ]] || [ "$dockerhub_tag" = "latest" ]; then
+            echo "::error::Invalid Docker Hub tag; use a versioned tag and pushLatest for latest"
+            exit 1
+          fi
+          if [ "$push_latest" != "true" ] && [ "$push_latest" != "false" ]; then
+            echo "::error::pushLatest must be true or false"
             exit 1
           fi
 
@@ -66,7 +82,7 @@ jobs:
 
           {
             echo "openclaw_tag=$openclaw_tag"
-            echo "dockerhub_tag=$openclaw_tag"
+            echo "dockerhub_tag=$dockerhub_tag"
             echo "push_latest=$push_latest"
             echo "source_sha=$source_sha"
             echo "built_at=$built_at"
@@ -118,7 +134,7 @@ jobs:
             GIT_COMMIT=${{ needs.resolve.outputs.source_sha }}
             OPENCLAW_BUILD_TIMESTAMP=${{ needs.resolve.outputs.built_at }}
             OPENCLAW_DOCKER_BUILD_VERSION=${{ needs.resolve.outputs.openclaw_tag }}
-            OPENCLAW_EXTENSIONS=diagnostics-otel,codex
+            OPENCLAW_EXTENSIONS=diagnostics-otel,codex,feishu
             OPENCLAW_INSTALL_BROWSER=true
           tags: |
             ${{ env.IMAGE_NAME }}:${{ needs.resolve.outputs.dockerhub_tag }}-amd64
@@ -171,7 +187,7 @@ jobs:
             GIT_COMMIT=${{ needs.resolve.outputs.source_sha }}
             OPENCLAW_BUILD_TIMESTAMP=${{ needs.resolve.outputs.built_at }}
             OPENCLAW_DOCKER_BUILD_VERSION=${{ needs.resolve.outputs.openclaw_tag }}
-            OPENCLAW_EXTENSIONS=diagnostics-otel,codex
+            OPENCLAW_EXTENSIONS=diagnostics-otel,codex,feishu
             OPENCLAW_INSTALL_BROWSER=true
           tags: |
             ${{ env.IMAGE_NAME }}:${{ needs.resolve.outputs.dockerhub_tag }}-arm64
