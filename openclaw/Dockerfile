@@ -212,6 +212,20 @@ RUN node scripts/postinstall-bundled-plugins.mjs && \
       fi; \
     done && \
     test -f dist/extensions/feishu/openclaw.plugin.json && \
+    # Shared Feishu chunks in dist/ resolve dependencies from the app root. \
+    node --input-type=module -e ' \
+      import fs from "node:fs"; import path from "node:path"; \
+      const root = process.cwd(); \
+      const plugin = path.join(root, "dist/extensions/feishu"); \
+      const manifest = JSON.parse(fs.readFileSync(path.join(plugin, "package.json"), "utf8")); \
+      for (const dependency of Object.keys(manifest.dependencies ?? {})) { \
+        const target = path.join(root, "node_modules", dependency); \
+        if (!fs.existsSync(target)) { \
+          fs.mkdirSync(path.dirname(target), { recursive: true }); \
+          fs.symlinkSync(path.relative(path.dirname(target), path.join(plugin, "node_modules", dependency)), target, "dir"); \
+        } \
+        await import(dependency); \
+      }' && \
     touch /app/.1panel-feishu-bundled-v1 && \
     find dist -type f \( -name '*.d.ts' -o -name '*.d.mts' -o -name '*.d.cts' -o -name '*.map' \) -delete && \
     if [ -L /app/node_modules/@openclaw/ai ]; then \
