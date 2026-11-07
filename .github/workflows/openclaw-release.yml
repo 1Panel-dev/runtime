@@ -8,8 +8,8 @@ on:
   workflow_dispatch:
     inputs:
       openclawTag:
-        default: "2026.10.10"
-        description: "Upstream OpenClaw release without v, for example 2026.10.10"
+        default: "2026.11.1"
+        description: "Upstream OpenClaw release without v, for example 2026.11.1"
         required: true
       dockerTag:
         description: "Docker Hub tag; leave empty to use the release (test example: 2026.10.9-feishu-test.1)"
