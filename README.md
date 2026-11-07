@@ -10,7 +10,7 @@ Current images in this repository:
 - `1panel/deepseek-harness`
 - `1panel/hermes-agent`
 - `1panel/openclaw`
-- `1panel/vllm-gb10-dspark`
+- `1panel/vllm-gb10-dual-node`
 - `1panel/node`
 - `1panel/php`
 - `1panel/java`
@@ -21,7 +21,7 @@ Current images in this repository:
 - `1panel/deepseek-harness`: DeepSeek Harness image maintained by 1Panel with HTTPS access and persistent runtime data
 - `1panel/hermes-agent`: Hermes Agent runtime image maintained by 1Panel with bundled messaging channel dependencies
 - `1panel/openclaw`: OpenClaw runtime image built from official source with 1Panel-oriented customizations
-- `1panel/vllm-gb10-dspark`: ARM64 vLLM runtime for DeepSeek V4 Flash on two NVIDIA GB10 nodes
+- `1panel/vllm-gb10-dual-node`: ARM64 vLLM runtime for DeepSeek V4 Flash on two NVIDIA GB10 nodes
 - `1panel/node`: Node.js runtime image
 - `1panel/php`: PHP-FPM runtime images for multiple versions
 - `1panel/java`: Java JDK runtime images based on Eclipse Temurin
@@ -67,9 +67,9 @@ docker build --build-arg PHP_VERSION=7.4.33 -t 1panel/php:7.4.34-fpm php/7
 
 The build prepares signed Debian archive sources for Buster and Bullseye before installing packages. Archive metadata expiration checks are disabled for these sources; package signature verification stays enabled. The base image includes `libzip4` and `unzip`, so the ZIP runtime library remains available when 1Panel rebuilds a runtime using persisted extension files. Installing the ZIP extension still uses the 1Panel extension installer.
 
-## vLLM GB10 DSpark
+## vLLM GB10 Dual Node
 
-`1panel/vllm-gb10-dspark:0.1.1` extends the pinned Anemll DSpark GX10 `0.1.1` image with the deployment patches and DSpark proposer used by the matching 1Panel App Store package. It is published for `linux/arm64` only and requires two NVIDIA GB10 nodes, NVIDIA Container Toolkit, and a working RoCE/InfiniBand link.
+`1panel/vllm-gb10-dual-node:0.25-optimized-for-ds-v4-flash` extends the pinned Anemll DSpark GX10 `0.1.1` image with the deployment patches and DSpark proposer used by the matching 1Panel App Store package. The `0.25` tag prefix identifies the vLLM version series; the base image's validated vLLM runtime version is `0.25.2.dev0+g752a3a504.d20260714`. It is published for `linux/arm64` only and requires two NVIDIA GB10 nodes, NVIDIA Container Toolkit, and a working RoCE/InfiniBand link.
 
 ## ComfyUI
 
