@@ -1,0 +1,68 @@
+name: Sync vLLM Image
+run-name: Sync vLLM Image ${{ inputs.imageVersion }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      imageVersion:
+        description: "Source and Docker Hub image tag"
+        default: "v0.32.0-optimized-for-ds-4.1-flash"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: vllm-release
+  cancel-in-progress: false
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+  SOURCE_IMAGE: swr.cn-south-1.myhuaweicloud.com/vllm/vllm/vllm-openai
+  IMAGE_NAME: 1panel/vllm
+
+jobs:
+  docker:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Install Skopeo
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends skopeo
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v4
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_PASSWORD }}
+
+      - name: Copy amd64 image to Docker Hub
+        shell: bash
+        env:
+          IMAGE_VERSION: ${{ inputs.imageVersion }}
+        run: |
+          set -euo pipefail
+
+          if [[ ! "${IMAGE_VERSION}" =~ ^[A-Za-z0-9_][A-Za-z0-9_.-]{0,127}$ ]]; then
+            echo "::error::Invalid image tag: ${IMAGE_VERSION}"
+            exit 1
+          fi
+
+          source="docker://${SOURCE_IMAGE}:${IMAGE_VERSION}"
+          destination="docker://${IMAGE_NAME}:${IMAGE_VERSION}"
+          platform="$(skopeo --override-os linux --override-arch amd64 inspect \
+            --no-tags --format '{{.Os}}/{{.Architecture}}' "${source}")"
+          if [ "${platform}" != "linux/amd64" ]; then
+            echo "::error::Expected linux/amd64, got ${platform}"
+            exit 1
+          fi
+
+          skopeo --override-os linux --override-arch amd64 copy \
+            --preserve-digests \
+            --dest-authfile "${HOME}/.docker/config.json" \
+            "${source}" "${destination}"
+
+          skopeo inspect --no-tags \
+            --authfile "${HOME}/.docker/config.json" \
+            "${destination}"
