@@ -10,7 +10,7 @@
 - `1panel/deepseek-harness`
 - `1panel/hermes-agent`
 - `1panel/openclaw`
-- `1panel/vllm-gb10-dspark`
+- `1panel/vllm-gb10-dual-node`
 - `1panel/node`
 - `1panel/php`
 - `1panel/java`
@@ -21,7 +21,7 @@
 - `1panel/deepseek-harness`：由 1Panel 维护的 DeepSeek Harness 镜像，提供 HTTPS 访问和运行数据持久化
 - `1panel/hermes-agent`：1Panel 维护的 Hermes Agent 运行环境镜像，内置消息通道相关依赖
 - `1panel/openclaw`：基于 OpenClaw 官方源码构建的运行环境镜像，包含面向 1Panel 场景的定制
-- `1panel/vllm-gb10-dspark`：用于在两台 NVIDIA GB10 节点上部署 DeepSeek V4 Flash 的 ARM64 vLLM 运行环境镜像
+- `1panel/vllm-gb10-dual-node`：用于在两台 NVIDIA GB10 节点上部署 DeepSeek V4 Flash 的 ARM64 vLLM 运行环境镜像
 - `1panel/node`：Node.js 运行环境镜像
 - `1panel/php`：多个版本的 PHP-FPM 运行环境镜像
 - `1panel/java`：基于 Eclipse Temurin 的 Java JDK 运行环境镜像
@@ -67,9 +67,9 @@ docker build --build-arg PHP_VERSION=7.4.33 -t 1panel/php:7.4.34-fpm php/7
 
 构建时先将 Buster 和 Bullseye 的软件源切换到 Debian 官方签名归档，再安装依赖；仅对这些归档源关闭元数据过期检查，保留软件包签名校验。基础镜像内置 `libzip4` 和 `unzip`，因此 1Panel 重建运行环境并加载已保存的扩展文件时，ZIP 运行库仍然可用。ZIP 扩展本身仍通过 1Panel 的扩展安装脚本安装。
 
-## vLLM GB10 DSpark
+## vLLM GB10 双节点
 
-`1panel/vllm-gb10-dspark:0.1.1` 基于固定的 Anemll DSpark GX10 `0.1.1` 镜像，加入对应 1Panel 应用商店版本使用的部署补丁和 DSpark proposer。该镜像仅发布 `linux/arm64`，要求两台 NVIDIA GB10 节点、NVIDIA Container Toolkit 和可用的 RoCE/InfiniBand 链路。
+`1panel/vllm-gb10-dual-node:0.25-optimized-for-ds-v4-flash` 基于固定的 Anemll DSpark GX10 `0.1.1` 镜像，加入对应 1Panel 应用商店版本使用的部署补丁和 DSpark proposer。标签前缀 `0.25` 表示 vLLM 版本系列，基础镜像验证过的 vLLM 运行时版本为 `0.25.2.dev0+g752a3a504.d20260714`。该镜像仅发布 `linux/arm64`，要求两台 NVIDIA GB10 节点、NVIDIA Container Toolkit 和可用的 RoCE/InfiniBand 链路。
 
 ## ComfyUI
 
