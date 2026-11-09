@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
     inputs:
       openclawTag:
-        default: "2026.11.1"
+        default: "2026.11.2"
         description: "Upstream OpenClaw release without v, for example 2026.11.1"
         required: true
       dockerTag:
