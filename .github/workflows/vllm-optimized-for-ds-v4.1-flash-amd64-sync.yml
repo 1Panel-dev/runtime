@@ -4,9 +4,14 @@ run-name: Sync vLLM Image ${{ inputs.imageVersion }}
 on:
   workflow_dispatch:
     inputs:
-      imageVersion:
-        description: "Source and Docker Hub image tag"
+      sourceImageVersion:
+        description: "Source image tag"
         default: "v0.32.0-optimized-for-ds-4.1-flash"
+        required: true
+        type: string
+      imageVersion:
+        description: "Docker Hub image tag"
+        default: "v0.32.0-optimized-for-ds-v4.1-flash"
         required: true
         type: string
 
@@ -40,16 +45,19 @@ jobs:
       - name: Copy amd64 image to Docker Hub
         shell: bash
         env:
+          SOURCE_IMAGE_VERSION: ${{ inputs.sourceImageVersion }}
           IMAGE_VERSION: ${{ inputs.imageVersion }}
         run: |
           set -euo pipefail
 
-          if [[ ! "${IMAGE_VERSION}" =~ ^[A-Za-z0-9_][A-Za-z0-9_.-]{0,127}$ ]]; then
-            echo "::error::Invalid image tag: ${IMAGE_VERSION}"
-            exit 1
-          fi
+          for version in "${SOURCE_IMAGE_VERSION}" "${IMAGE_VERSION}"; do
+            if [[ ! "${version}" =~ ^[A-Za-z0-9_][A-Za-z0-9_.-]{0,127}$ ]]; then
+              echo "::error::Invalid image tag: ${version}"
+              exit 1
+            fi
+          done
 
-          source="docker://${SOURCE_IMAGE}:${IMAGE_VERSION}"
+          source="docker://${SOURCE_IMAGE}:${SOURCE_IMAGE_VERSION}"
           destination="docker://${IMAGE_NAME}:${IMAGE_VERSION}"
           platform="$(skopeo --override-os linux --override-arch amd64 inspect \
             --no-tags --format '{{.Os}}/{{.Architecture}}' "${source}")"
