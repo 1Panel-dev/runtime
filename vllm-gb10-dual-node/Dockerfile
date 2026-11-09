@@ -3,7 +3,7 @@
 ARG BASE_IMAGE=ghcr.io/anemll/dspark-vllm-gx10:0.1.1@sha256:a83948492cf13df455170fb42885f5ef4db54fefe0feff0f841ecbff464ac9d8
 FROM ${BASE_IMAGE}
 
-ARG IMAGE_VERSION=0.25-optimized-for-ds-v4-flash
+ARG IMAGE_VERSION=0.25-optimized-for-2-gb10-ds-v4-flash
 
 USER root
 

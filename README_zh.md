@@ -10,7 +10,7 @@
 - `1panel/deepseek-harness`
 - `1panel/hermes-agent`
 - `1panel/openclaw`
-- `1panel/vllm-gb10-dual-node`
+- `1panel/vllm`
 - `1panel/node`
 - `1panel/php`
 - `1panel/java`
@@ -21,7 +21,7 @@
 - `1panel/deepseek-harness`：由 1Panel 维护的 DeepSeek Harness 镜像，提供 HTTPS 访问和运行数据持久化
 - `1panel/hermes-agent`：1Panel 维护的 Hermes Agent 运行环境镜像，内置消息通道相关依赖
 - `1panel/openclaw`：基于 OpenClaw 官方源码构建的运行环境镜像，包含面向 1Panel 场景的定制
-- `1panel/vllm-gb10-dual-node`：用于在两台 NVIDIA GB10 节点上部署 DeepSeek V4 Flash 的 ARM64 vLLM 运行环境镜像
+- `1panel/vllm`：用于在两台 NVIDIA GB10 节点上部署 DeepSeek V4 Flash 的 ARM64 vLLM 运行环境镜像，以及同步的 AMD64 DeepSeek 4.1 Flash 版本
 - `1panel/node`：Node.js 运行环境镜像
 - `1panel/php`：多个版本的 PHP-FPM 运行环境镜像
 - `1panel/java`：基于 Eclipse Temurin 的 Java JDK 运行环境镜像
@@ -69,7 +69,7 @@ docker build --build-arg PHP_VERSION=7.4.33 -t 1panel/php:7.4.34-fpm php/7
 
 ## vLLM GB10 双节点
 
-`1panel/vllm-gb10-dual-node:0.25-optimized-for-ds-v4-flash` 基于固定的 Anemll DSpark GX10 `0.1.1` 镜像，加入对应 1Panel 应用商店版本使用的部署补丁和 DSpark proposer。标签前缀 `0.25` 表示 vLLM 版本系列，基础镜像验证过的 vLLM 运行时版本为 `0.25.2.dev0+g752a3a504.d20260714`。该镜像仅发布 `linux/arm64`，要求两台 NVIDIA GB10 节点、NVIDIA Container Toolkit 和可用的 RoCE/InfiniBand 链路。
+`1panel/vllm:0.25-optimized-for-2-gb10-ds-v4-flash` 基于固定的 Anemll DSpark GX10 `0.1.1` 镜像，加入对应 1Panel 应用商店版本使用的部署补丁和 DSpark proposer。标签前缀 `0.25` 表示 vLLM 版本系列，基础镜像验证过的 vLLM 运行时版本为 `0.25.2.dev0+g752a3a504.d20260714`。该镜像仅发布 `linux/arm64`，要求两台 NVIDIA GB10 节点、NVIDIA Container Toolkit 和可用的 RoCE/InfiniBand 链路。
 
 ## ComfyUI
 

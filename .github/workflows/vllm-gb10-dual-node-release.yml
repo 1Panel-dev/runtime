@@ -6,7 +6,7 @@ on:
     inputs:
       imageVersion:
         description: "Docker Hub image tag"
-        default: "0.25-optimized-for-ds-v4-flash"
+        default: "0.25-optimized-for-2-gb10-ds-v4-flash"
         required: true
         type: string
 
@@ -19,7 +19,7 @@ concurrency:
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
-  IMAGE_NAME: 1panel/vllm-gb10-dual-node
+  IMAGE_NAME: 1panel/vllm
 
 jobs:
   docker:
