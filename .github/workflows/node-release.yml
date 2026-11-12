@@ -6,7 +6,7 @@ on:
     inputs:
       nodeVersion:
         description: 'Node Version'
-        default: '26.13.0'
+        default: '26.13.1'
         required: true
       platforms:
         description: 'Platforms'
