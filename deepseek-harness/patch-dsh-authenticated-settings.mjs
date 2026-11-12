@@ -59,7 +59,12 @@ let pdf = await readFile(pdfPath, 'utf8')
 // Preserve PDF.js license notices through esbuild's comment filtering.
 pdf = pdf.replaceAll('@licstart', '@license @licstart')
 const workerDeclaration = 'var _dsh_pdf_worker_default = '
-const workerLines = pdf.split('\n').filter(line => line.trimStart().startsWith(workerDeclaration))
+let workerLines = pdf.split('\n').filter(line => line.trimStart().startsWith(workerDeclaration))
+if (workerLines.length === 0) {
+  // Newer DSH releases ship a minified bundle with an inline worker declaration.
+  pdf = (await transform(pdf, { target: 'es2022' })).code
+  workerLines = pdf.split('\n').filter(line => line.trimStart().startsWith(workerDeclaration))
+}
 if (workerLines.length !== 1) throw new Error('unexpected PDF worker source shape')
 const workerSource = runInNewContext(workerLines[0].trim().slice(workerDeclaration.length, -1), {}, { timeout: 1000 })
 if (typeof workerSource !== 'string') throw new Error('unexpected PDF worker source value')
