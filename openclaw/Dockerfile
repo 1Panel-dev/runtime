@@ -16,9 +16,9 @@ ARG OPENCLAW_DOCKER_BUILD_NODE_OPTIONS="--max-old-space-size=8192"
 ARG OPENCLAW_DOCKER_BUILD_TSDOWN_MAX_OLD_SPACE_MB=""
 ARG OPENCLAW_DOCKER_BUILD_SKIP_DTS=1
 ARG OPENCLAW_EXCLUDE_BUNDLED_PLUGINS="qqbot"
-ARG OPENCLAW_NODE_BOOKWORM_IMAGE="docker.io/library/node:24.22.1-bookworm@sha256:6449e19d8184d84062525b6a7524def03146c2cb04a7f08b076680d0e8e4240a"
-ARG OPENCLAW_NODE_BOOKWORM_SLIM_IMAGE="docker.io/library/node:24.22.1-bookworm-slim@sha256:55fb5f5a527ea2c5c4a95f963e48ef90aa38c7b346054fdc8ee9957a2b55d205"
-ARG OPENCLAW_NODE_BOOKWORM_SLIM_DIGEST="sha256:55fb5f5a527ea2c5c4a95f963e48ef90aa38c7b346054fdc8ee9957a2b55d205"
+ARG OPENCLAW_NODE_BOOKWORM_IMAGE="docker.io/library/node:24.22.3-bookworm@sha256:9d266751ca3d7fdbe651c878ffd5ad0a42fed49a18c283509267c97f025b7496"
+ARG OPENCLAW_NODE_BOOKWORM_SLIM_IMAGE="docker.io/library/node:24.22.3-bookworm-slim@sha256:dc26ae92c9fb15cf6b1d63e20f0944b2efe0f115b20e00be48fb23fceb061c54"
+ARG OPENCLAW_NODE_BOOKWORM_SLIM_DIGEST="sha256:dc26ae92c9fb15cf6b1d63e20f0944b2efe0f115b20e00be48fb23fceb061c54"
 # Keep in sync with .github/actions/setup-node-env/action.yml bun-version.
 # To update: docker buildx imagetools inspect docker.io/oven/bun:<version> and use the manifest-list digest.
 ARG OPENCLAW_BUN_IMAGE="docker.io/oven/bun:1.4.4@sha256:1d22548f177f4ff38e0c15baa3c2c46c6c2060ba2d1bc573bb4720b407548f1d"
