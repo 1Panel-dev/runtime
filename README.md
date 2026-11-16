@@ -21,7 +21,7 @@ Current images in this repository:
 - `1panel/deepseek-harness`: DeepSeek Harness image maintained by 1Panel with HTTPS access and persistent runtime data
 - `1panel/hermes-agent`: Hermes Agent runtime image maintained by 1Panel with bundled messaging channel dependencies
 - `1panel/openclaw`: OpenClaw runtime image built from official source with 1Panel-oriented customizations
-- `1panel/vllm`: ARM64 vLLM runtime for DeepSeek V4 Flash on two NVIDIA GB10 nodes, plus a synced AMD64 DeepSeek 4.1 Flash variant
+- `1panel/vllm`: ARM64 vLLM runtimes for two-node DeepSeek V4 Flash and four-node DeepSeek V4.1 Flash on NVIDIA GB10, plus a synced AMD64 DeepSeek 4.1 Flash variant
 - `1panel/node`: Node.js runtime image
 - `1panel/php`: PHP-FPM runtime images for multiple versions
 - `1panel/java`: Java JDK runtime images based on Eclipse Temurin
@@ -70,6 +70,12 @@ The build prepares signed Debian archive sources for Buster and Bullseye before 
 ## vLLM GB10 Dual Node
 
 `1panel/vllm:0.25-optimized-for-2-gb10-ds-v4-flash` extends the pinned Anemll DSpark GX10 `0.1.1` image with the deployment patches and DSpark proposer used by the matching 1Panel App Store package. The `0.25` tag prefix identifies the vLLM version series; the base image's validated vLLM runtime version is `0.25.2.dev0+g752a3a504.d20260714`. It is published for `linux/arm64` only and requires two NVIDIA GB10 nodes, NVIDIA Container Toolkit, and a working RoCE/InfiniBand link.
+
+## vLLM GB10 Four Node
+
+`1panel/vllm:20261107-optimized-for-4-gb10-ds-v4.1-flash` mirrors `juilpark/spark-ds41f:1107-homelab-045eba05` for DeepSeek V4.1 Flash on four NVIDIA GB10 nodes, preserving the source image contents. The tag prefix `20261107` identifies the upstream release date; packaging revisions use `.1`, `.2`, etc. The image targets `linux/arm64` only and requires four NVIDIA GB10 nodes, NVIDIA Container Toolkit, and a working RoCEv2 switch network.
+
+Publish the image by manually running `Sync vLLM GB10 Four Node Image` with `sourceImageVersion` and `imageVersion`. Inference compatibility must be verified on the target cluster.
 
 ## ComfyUI
 

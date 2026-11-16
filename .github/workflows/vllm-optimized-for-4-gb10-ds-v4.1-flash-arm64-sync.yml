@@ -1,0 +1,76 @@
+name: Sync vLLM GB10 Four Node Image
+run-name: Sync vLLM GB10 Four Node Image ${{ inputs.imageVersion }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      sourceImageVersion:
+        description: "Source image tag"
+        default: "1107-homelab-045eba05"
+        required: true
+        type: string
+      imageVersion:
+        description: "Docker Hub image tag"
+        default: "20261107-optimized-for-4-gb10-ds-v4.1-flash"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: vllm-release
+  cancel-in-progress: false
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+  SOURCE_IMAGE: docker.io/juilpark/spark-ds41f
+  IMAGE_NAME: 1panel/vllm
+
+jobs:
+  docker:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Install Skopeo
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends skopeo
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v4
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_PASSWORD }}
+
+      - name: Copy arm64 image to Docker Hub
+        shell: bash
+        env:
+          SOURCE_IMAGE_VERSION: ${{ inputs.sourceImageVersion }}
+          IMAGE_VERSION: ${{ inputs.imageVersion }}
+        run: |
+          set -euo pipefail
+
+          for version in "${SOURCE_IMAGE_VERSION}" "${IMAGE_VERSION}"; do
+            if [[ ! "${version}" =~ ^[A-Za-z0-9_][A-Za-z0-9_.-]{0,127}$ ]]; then
+              echo "::error::Invalid image tag: ${version}"
+              exit 1
+            fi
+          done
+
+          source="docker://${SOURCE_IMAGE}:${SOURCE_IMAGE_VERSION}"
+          destination="docker://${IMAGE_NAME}:${IMAGE_VERSION}"
+          platform="$(skopeo --override-os linux --override-arch arm64 inspect \
+            --no-tags --format '{{.Os}}/{{.Architecture}}' "${source}")"
+          if [ "${platform}" != "linux/arm64" ]; then
+            echo "::error::Expected linux/arm64, got ${platform}"
+            exit 1
+          fi
+
+          skopeo --override-os linux --override-arch arm64 copy \
+            --preserve-digests \
+            --dest-authfile "${HOME}/.docker/config.json" \
+            "${source}" "${destination}"
+
+          skopeo inspect --no-tags \
+            --authfile "${HOME}/.docker/config.json" \
+            "${destination}"
