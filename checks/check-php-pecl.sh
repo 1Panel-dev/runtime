@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-docker run --rm -i --entrypoint sh "${1:?Usage: bash tests/check-php-pecl.sh IMAGE}" <<'SH'
+docker run --rm -i --entrypoint sh "${1:?Usage: bash checks/check-php-pecl.sh IMAGE}" <<'SH'
 set -eu
 pecl version
 pecl remote-info apcu

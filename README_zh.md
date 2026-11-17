@@ -1,19 +1,17 @@
 [English](README.md) | [中文](README_zh.md)
 
-# 1Panel Runtime Images
+# 1Panel Container Images
 
-本仓库用于构建和发布 1Panel 使用的运行时镜像。
+本仓库用于构建和发布 1Panel 使用的容器镜像，涵盖智能体、编程语言运行环境、模型推理和高可用数据库。
 
-当前仓库主要维护以下镜像：
+## 镜像分类
 
-- `1panel/comfyui`
-- `1panel/deepseek-harness`
-- `1panel/hermes-agent`
-- `1panel/openclaw`
-- `1panel/vllm`
-- `1panel/node`
-- `1panel/php`
-- `1panel/java`
+| 分类 | 镜像 |
+| --- | --- |
+| 智能体 | `1panel/deepseek-harness`、`1panel/hermes-agent`、`1panel/openclaw` |
+| 编程语言运行环境 | `1panel/node`、`1panel/php`、`1panel/java` |
+| 模型推理与生成 | `1panel/vllm`、`1panel/comfyui` |
+| 数据库主从复制 | `1panel/mysql-cluster`、`1panel/postgresql-cluster`、`1panel/redis-cluster` |
 
 ## 镜像说明
 
@@ -25,6 +23,52 @@
 - `1panel/node`：Node.js 运行环境镜像
 - `1panel/php`：多个版本的 PHP-FPM 运行环境镜像
 - `1panel/java`：基于 Eclipse Temurin 的 Java JDK 运行环境镜像
+- `1panel/mysql-cluster`：兼容 1Panel 安装包接口的 MySQL 主从复制镜像
+- `1panel/postgresql-cluster`：兼容 1Panel 安装包接口的 PostgreSQL 流复制镜像
+- `1panel/redis-cluster`：兼容 1Panel 安装包接口的 Redis 主从复制镜像
+
+## 仓库结构
+
+| 路径 | 职责 |
+| --- | --- |
+| `deepseek-harness/`、`hermes-agent/`、`openclaw/` | 智能体镜像源码与启动配置 |
+| `node/`、`php/`、`java/` | 编程语言运行环境镜像与各版本构建文件 |
+| `vllm-gb10-dual-node/`、`comfyui/` | 模型推理、生成镜像及部署适配 |
+| [database-ha/](database-ha/README.md) | 数据库主从镜像源码与支持版本映射 |
+| [checks/](checks/README.md) | 源码、配置、补丁和容器运行校验 |
+| `.github/workflows/`、`.cnb.yml`、`.cnb/` | 构建、校验、镜像发布与仓库同步工作流 |
+
+## 数据库主从镜像
+
+三类数据库的源码和版本映射放在 [database-ha/](database-ha/README.md)，运行校验脚本统一维护在根目录的 [checks/](checks/README.md)。
+
+| 镜像 | 支持系列与镜像标签 |
+| --- | --- |
+| `1panel/mysql-cluster` | `8.4` |
+| `1panel/postgresql-cluster` | `15`、`16`、`17`、`18` |
+| `1panel/redis-cluster` | `6.2`、`7.4`、`8.10` |
+
+版本规则沿用当前 1Panel 高可用安装包：MySQL、Redis 使用主次版本号，PostgreSQL 使用主版本号。实际构建使用的补丁版本固定在 [versions.json](database-ha/versions.json)。主从节点使用同一个镜像，通过复制环境变量区分角色。
+
+`Build Database Replication Images` 在原生 amd64、arm64 Runner 上构建并验证所选系列。可以选择数据库和系列，也可以使用 `all` 构建全部支持项。手动运行默认只构建测试；启用 `publish` 后推送已验证的架构镜像，并在全部选中任务通过后发布系列标签的多架构 manifest。
+
+支持范围覆盖当前 1Panel 高可用仍有上游维护的系列，并新增 PostgreSQL 18、Redis 8.10。MySQL 5.7/8.0、PostgreSQL 13/14 已结束维护；Redis 8.0 已被上游安全政策列为不支持，详见[版本维护范围及官方来源](database-ha/README.md#版本维护范围)。
+
+这些镜像提供主从复制。已有集群迁移、数据库跨主版本升级及自动故障切换需要独立的实施与验证流程。
+
+## 镜像校验
+
+[checks/](checks/README.md) 是维护者和 CI 的统一校验入口，目前包含 9 个脚本：4 个离线检查和 5 个容器检查。
+
+| 校验类型 | 覆盖内容 |
+| --- | --- |
+| 源码与配置 | Dockerfile、入口、版本限制、镜像标签与发布工作流的一致性 |
+| 源码补丁 | 校验值、补丁应用，以及重复应用或输入被篡改时的拒绝行为 |
+| 容器行为 | PHP 扩展与 CLI/FPM 行为、数据库客户端连接、备份恢复、主从复制和重启持久化 |
+
+数据库构建工作流会在构建每个版本和架构的镜像后，执行对应的容器校验。本目录的 Java、PHP 脚本目前由维护者手动执行。镜像构建与发布由工作流控制，校验脚本独立于应用启动流程运行。
+
+维护时先运行相关离线检查，再构建镜像，并在发布前校验受影响的版本和架构。检查通过仅覆盖实际执行的场景，`SKIP` 表示该项尚未验证。各脚本的命令、依赖与验证边界详见目录说明。
 
 ## PHP 8 安全版本
 
@@ -34,7 +78,7 @@
 
 PHP 5.6、PHP 7 和 PHP 8 镜像在编译 PHP 后安装固定版本、校验 SHA256 的 PEAR 1.10.18。独立的 5.6/7.0–7.2 构建目录先离线升级固定版本并校验 SHA256 的 Archive_Tar 1.4.14，以满足其依赖。PHP 5.6 通过 `SSL_CERT_FILE` 使用系统 CA 证书包，保留证书校验。其中包含上游的 [HTTP 分块响应修复](https://github.com/pear/pear-core/pull/152)，避免 PECL 元数据解析报 `does not have REST info xml available`。通过 curl 下载后离线升级，避免旧版 PEAR 下载器无法下载自身更新。
 
-构建镜像后运行 `bash tests/check-php-pecl.sh IMAGE`，在临时容器中下载、编译、加载 APCu 并检查缓存读写。PHP 5.6 自动选择 APCu 4.0.11，此检查需要联网。运行 `python3 tests/check-php-pecl-source.py` 可离线检查全部七个构建目录及发布入口。
+构建镜像后运行 `bash checks/check-php-pecl.sh IMAGE`，在临时容器中下载、编译、加载 APCu 并检查缓存读写。PHP 5.6 自动选择 APCu 4.0.11，此检查需要联网。运行 `python3 checks/check-php-pecl-source.py` 可离线检查全部七个构建目录及发布入口。
 
 ## 重新发布 PHP 镜像
 
@@ -53,7 +97,7 @@ PHP 8.2+ 仅在镜像内 PEAR 低于 1.10.17 时需要为本问题重打。`Buil
 
 ## PHP EOL 源码回补
 
-PHP 5.6.40、7.0.33、7.1.33、7.2.34 和 7.3.33 的构建也会应用固定 SHA256 的本地源码回补。补丁以第三方回补为起点，并补齐官方最小回补中适用于各旧分支的分配溢出、VM 和请求状态清理等改动；备用 `php/5.6` 入口同样覆盖。维护版镜像标签分别为 `5.6.41-fpm`、`7.0.34-fpm`、`7.1.34-fpm`、`7.2.35-fpm`、`7.3.34-fpm`，内部 PHP 版本仍保留上述真实基线。源码校验使用 `tests/check-php-legacy-backport.py`，实际 CLI/FPM 回归使用 `tests/check-php-legacy-runtime.py IMAGE`。这些旧分支仍为 EOL，详细来源、行为变化和验证方式见下方说明。
+PHP 5.6.40、7.0.33、7.1.33、7.2.34 和 7.3.33 的构建也会应用固定 SHA256 的本地源码回补。补丁以第三方回补为起点，并补齐官方最小回补中适用于各旧分支的分配溢出、VM 和请求状态清理等改动；备用 `php/5.6` 入口同样覆盖。维护版镜像标签分别为 `5.6.41-fpm`、`7.0.34-fpm`、`7.1.34-fpm`、`7.2.35-fpm`、`7.3.34-fpm`，内部 PHP 版本仍保留上述真实基线。源码校验使用 `checks/check-php-legacy-backport.py`，实际 CLI/FPM 回归使用 `checks/check-php-legacy-runtime.py IMAGE`。这些旧分支仍为 EOL，详细来源、行为变化和验证方式见下方说明。
 
 PHP 7.4.33、8.0.30 和 8.1.34 构建会应用官方针对 CVE-2026-109618 / CVE-2026-109619 的最小源码回补并重新编译 PHP。这些分支仍为 EOL，同系列更早的补丁版本现在会明确失败。`1panel/php:7.4.34-fpm`、`8.0.31-fpm` 和 `8.1.35-fpm` 为 1Panel 维护版镜像标签，分别基于官方 PHP 7.4.33、8.0.30、8.1.34 加上述回补，内部 PHP 版本保持原值。详见[实现、兼容性变化和验证说明](php/EOL-BACKPORT.md)。
 

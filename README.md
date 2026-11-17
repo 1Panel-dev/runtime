@@ -1,19 +1,17 @@
 [English](README.md) | [中文](README_zh.md)
 
-# 1Panel Runtime Images
+# 1Panel Container Images
 
-This repository contains runtime images used by 1Panel.
+This repository builds and publishes container images used by 1Panel, covering AI agents, language runtimes, model inference and high availability databases.
 
-Current images in this repository:
+## Image categories
 
-- `1panel/comfyui`
-- `1panel/deepseek-harness`
-- `1panel/hermes-agent`
-- `1panel/openclaw`
-- `1panel/vllm`
-- `1panel/node`
-- `1panel/php`
-- `1panel/java`
+| Category | Images |
+| --- | --- |
+| AI agents | `1panel/deepseek-harness`, `1panel/hermes-agent`, `1panel/openclaw` |
+| Language runtimes | `1panel/node`, `1panel/php`, `1panel/java` |
+| Model inference and generation | `1panel/vllm`, `1panel/comfyui` |
+| Database replication | `1panel/mysql-cluster`, `1panel/postgresql-cluster`, `1panel/redis-cluster` |
 
 ## Images
 
@@ -25,6 +23,52 @@ Current images in this repository:
 - `1panel/node`: Node.js runtime image
 - `1panel/php`: PHP-FPM runtime images for multiple versions
 - `1panel/java`: Java JDK runtime images based on Eclipse Temurin
+- `1panel/mysql-cluster`: MySQL primary/replica image with 1Panel installation package compatibility
+- `1panel/postgresql-cluster`: PostgreSQL streaming replication image with 1Panel installation package compatibility
+- `1panel/redis-cluster`: Redis primary/replica image with 1Panel installation package compatibility
+
+## Repository layout
+
+| Path | Purpose |
+| --- | --- |
+| `deepseek-harness/`, `hermes-agent/`, `openclaw/` | Agent image sources and startup configuration |
+| `node/`, `php/`, `java/` | Language runtime images and version-specific build files |
+| `vllm-gb10-dual-node/`, `comfyui/` | Model inference and generation images and deployment adaptations |
+| [database-ha/](database-ha/README.md) | Database replication image sources and supported version mappings |
+| [checks/](checks/README.md) | Source, configuration, patch and container runtime checks |
+| `.github/workflows/`, `.cnb.yml`, `.cnb/` | Build, validation, publication and repository synchronization workflows |
+
+## Database replication images
+
+Database image sources and supported version mappings are grouped under [database-ha/](database-ha/README.md). Their runtime checks are maintained in the shared [checks/](checks/README.md) directory.
+
+| Image | Supported series / image tags |
+| --- | --- |
+| `1panel/mysql-cluster` | `8.4` |
+| `1panel/postgresql-cluster` | `15`, `16`, `17`, `18` |
+| `1panel/redis-cluster` | `6.2`, `7.4`, `8.10` |
+
+Tags follow the existing 1Panel HA package version rules: MySQL and Redis use major.minor; PostgreSQL uses the major version. The exact upstream patch versions are pinned in [versions.json](database-ha/versions.json). Primary and replica nodes use the same image with different replication environment variables.
+
+`Build Database Replication Images` builds and checks each selected series on native amd64 and arm64 runners. Select a database and series, or use `all` to build every supported entry. Manual runs default to build and test only; enabling `publish` pushes the verified architecture images and publishes the series manifest after all selected builds pass.
+
+The supported list includes the existing 1Panel HA series still maintained upstream and adds PostgreSQL 18 and Redis 8.10. MySQL 5.7/8.0 and PostgreSQL 13/14 have reached EOL; Redis 8.0 is marked unsupported in the upstream security policy. See [support decisions and upstream sources](database-ha/README.md#版本维护范围).
+
+These images provide primary/replica replication. Existing cluster migration, cross-major database upgrades and automatic failover require separate procedures and validation.
+
+## Image checks
+
+[checks/](checks/README.md) provides a shared validation entry point for maintainers and CI. Its nine scripts comprise four offline checks and five container checks:
+
+| Check type | Scope |
+| --- | --- |
+| Source and configuration | Dockerfiles, entrypoints, version constraints, image tags and release workflow consistency |
+| Source patches | Checksums, patch application and rejection of repeated application or tampered inputs |
+| Container behavior | PHP extensions and CLI/FPM behavior, database client connections, backup and restore, replication and restart persistence |
+
+The database build workflow runs the corresponding container check after building each version and architecture. The Java and PHP scripts in this directory currently run manually. Image builds and publication are controlled by the workflows; checks run independently of application startup.
+
+Run the relevant offline checks before building, then validate the built image for each affected version and architecture before publication. A successful check covers the cases actually executed; `SKIP` identifies cases that were not verified. The directory guide lists commands, dependencies and validation boundaries.
 
 ## PHP 8 security releases
 
@@ -34,7 +78,7 @@ Current images in this repository:
 
 The PHP 5.6, PHP 7 and PHP 8 images install checksum-pinned PEAR 1.10.18 after compiling PHP. The separate 5.6/7.0–7.2 contexts first upgrade checksum-pinned Archive_Tar 1.4.14 to satisfy its dependency. PHP 5.6 uses the system CA bundle through `SSL_CERT_FILE`, with certificate verification enabled. This includes the upstream [HTTP chunked response fix](https://github.com/pear/pear-core/pull/152), which prevents PECL metadata from failing with `does not have REST info xml available`. The bootstrap uses curl and a local, offline upgrade because the older PEAR downloader cannot fetch the update reliably.
 
-Run `bash tests/check-php-pecl.sh IMAGE` against a built image to download, compile and load APCu in a disposable container and verify a cache write/read. It selects APCu 4.0.11 for PHP 5.6 and needs network access. Run `python3 tests/check-php-pecl-source.py` for offline checks of all seven build contexts and the release wiring.
+Run `bash checks/check-php-pecl.sh IMAGE` against a built image to download, compile and load APCu in a disposable container and verify a cache write/read. It selects APCu 4.0.11 for PHP 5.6 and needs network access. Run `python3 checks/check-php-pecl-source.py` for offline checks of all seven build contexts and the release wiring.
 
 ## Rebuilding PHP images
 
@@ -53,7 +97,7 @@ For PHP 8.2+, rebuild only images whose PEAR is older than 1.10.17. `Build PHP 8
 
 ## PHP EOL source backports
 
-PHP 5.6.40, 7.0.33, 7.1.33, 7.2.34 and 7.3.33 builds also apply SHA256-pinned local source backports, including the alternate `php/5.6` context. The third-party starting patches have been supplemented with applicable allocation-overflow, VM and request-state changes from PHP's minimal backport. The maintenance image tags are `5.6.41-fpm`, `7.0.34-fpm`, `7.1.34-fpm`, `7.2.35-fpm` and `7.3.34-fpm`; internal PHP versions retain the real baselines above. Use `tests/check-php-legacy-backport.py` for source checks and `tests/check-php-legacy-runtime.py IMAGE` for actual CLI/FPM regressions. These branches remain EOL; provenance, behavior changes and validation instructions are documented below.
+PHP 5.6.40, 7.0.33, 7.1.33, 7.2.34 and 7.3.33 builds also apply SHA256-pinned local source backports, including the alternate `php/5.6` context. The third-party starting patches have been supplemented with applicable allocation-overflow, VM and request-state changes from PHP's minimal backport. The maintenance image tags are `5.6.41-fpm`, `7.0.34-fpm`, `7.1.34-fpm`, `7.2.35-fpm` and `7.3.34-fpm`; internal PHP versions retain the real baselines above. Use `checks/check-php-legacy-backport.py` for source checks and `checks/check-php-legacy-runtime.py IMAGE` for actual CLI/FPM regressions. These branches remain EOL; provenance, behavior changes and validation instructions are documented below.
 
 PHP 7.4.33, 8.0.30 and 8.1.34 builds apply the official minimal source backports for CVE-2026-109618 / CVE-2026-109619 and rebuild PHP. These branches remain EOL; older patch levels in these series now fail explicitly. `1panel/php:7.4.34-fpm`, `8.0.31-fpm` and `8.1.35-fpm` are 1Panel maintenance image tags based on official PHP 7.4.33, 8.0.30 and 8.1.34 respectively; their internal PHP versions remain unchanged. See [implementation, compatibility changes and validation](php/EOL-BACKPORT.md).
 
