@@ -28,7 +28,7 @@ All source builds include a CLI OOM check that requires exit status 1 and verifi
 Run the source checks, including the separately downloaded official 7.3.33 archive:
 
 ```sh
-python3 tests/check-php-legacy-backport.py /path/to/php-7.3.33.tar.xz
+python3 checks/check-php-legacy-backport.py /path/to/php-7.3.33.tar.xz
 ```
 
 The check covers all five source checksums, zero-fuzz application, repeated-application rejection, the supplemented guards, and helper rejection of tampered archives/patches. Without the argument, the four checked-in archives are tested and the 7.3 source check is explicitly skipped.
@@ -36,7 +36,7 @@ The check covers all five source checksums, zero-fuzz application, repeated-appl
 For each built image, run:
 
 ```sh
-python3 tests/check-php-legacy-runtime.py IMAGE
+python3 checks/check-php-legacy-runtime.py IMAGE
 ```
 
 This uses a disposable container with one FPM worker. It checks repeated requests, nested form arrays and copy-on-write, ordinary fatal errors, OOM during input parsing and script execution, worker replacement, skipped shutdown callbacks, real uploads, disabled session upload progress, duplicate headers and the multipart limit. Both FPM OOM cases must exit with code 1 without a crash signal. It compiles a small probe extension against the installed headers and checks allocation/hash overflow behavior, loads the rebuilt OPcache module, and verifies the archived source contains the patched header. Docker, Python 3 and the image's existing PHP build tools are required; the test does not publish images or contact external services.
@@ -127,12 +127,12 @@ Building/publishing must be performed separately by the maintainer; these change
 
 ## Offline validation
 
-Run `python3 tests/check-php-eol-backport.py` from the repository. It checks shell syntax, helper parity, version gates and the existing four-version 8.2+ workflow's Python Dockerfile assembly. It never builds images or triggers Actions.
+Run `python3 checks/check-php-eol-backport.py` from the repository. It checks shell syntax, helper parity, version gates and the existing four-version 8.2+ workflow's Python Dockerfile assembly. It never builds images or triggers Actions.
 
 For full source checks, download the official `php-7.4.33.tar.xz`, `php-8.0.30.tar.xz` and `php-8.1.34.tar.xz` plus each fixed commit's `.patch` into a separate directory, naming the patches `<full-commit>.patch`, then run:
 
 ```sh
-python3 tests/check-php-eol-backport.py /path/to/source-inputs
+python3 checks/check-php-eol-backport.py /path/to/source-inputs
 ```
 
 This verifies all pinned SHA256 values, applies each patch to temporary extracted source with zero fuzz, rejects a second application and rejects tampered inputs. The helper's `--check-source VERSION SOURCE.tar.xz COMMIT.patch` mode runs an individual offline check.

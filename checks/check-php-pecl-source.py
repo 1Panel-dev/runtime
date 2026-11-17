@@ -31,5 +31,5 @@ assert 'context: php/${{ matrix.phpVersion }}' in workflow
 assert 'file: php/${{ matrix.phpVersion }}/Dockerfile' in workflow
 assert 'tags: 1panel/php:${{ matrix.imageVersion }}-fpm' in workflow
 assert 'context: php/5.6.40' in (root / '.github/workflows/php5-release.yml').read_text()
-subprocess.run(['bash', '-n', str(root / 'tests/check-php-pecl.sh')], check=True)
+subprocess.run(['bash', '-n', str(root / 'checks/check-php-pecl.sh')], check=True)
 print('PASS: seven PECL bootstraps, RUN shell syntax, legacy CA and release contexts')

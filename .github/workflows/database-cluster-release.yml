@@ -1,0 +1,157 @@
+name: Build Database Replication Images
+
+on:
+  pull_request:
+    paths:
+      - 'database-ha/**'
+      - 'checks/check-*-cluster.sh'
+      - '.github/workflows/database-cluster-release.yml'
+  workflow_dispatch:
+    inputs:
+      database:
+        description: 'Database'
+        type: choice
+        options: [all, mysql, postgresql, redis]
+        default: all
+      version:
+        description: 'Supported series (e.g. 8.4, 18, 6.2); all builds every supported series'
+        default: all
+      publish:
+        description: 'Publish to Docker Hub after both architectures pass'
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: database-cluster-${{ github.event_name == 'workflow_dispatch' && inputs.publish && 'publish' || github.run_id }}
+  cancel-in-progress: false
+
+jobs:
+  prepare:
+    runs-on: ubuntu-24.04
+    outputs:
+      matrix: ${{ steps.matrix.outputs.matrix }}
+      images: ${{ steps.matrix.outputs.images }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Prepare supported versions
+        id: matrix
+        env:
+          DATABASE: ${{ inputs.database || 'all' }}
+          VERSION: ${{ inputs.version || 'all' }}
+        run: |
+          python3 - <<'PY' >> "$GITHUB_OUTPUT"
+          import json
+          import os
+          import re
+          from pathlib import Path
+
+          selected = os.environ['DATABASE']
+          series_filter = os.environ['VERSION']
+          versions = json.loads(Path('database-ha/versions.json').read_text())
+          arguments = {'mysql': 'MYSQL_VERSION', 'postgresql': 'POSTGRESQL_VERSION', 'redis': 'REDIS_VERSION'}
+          if selected != 'all' and selected not in versions:
+              raise SystemExit('Unsupported database')
+          if selected == 'all' and series_filter != 'all':
+              raise SystemExit('Select a database when selecting one version series')
+          builds, images = [], []
+          for name, supported in versions.items():
+              if name not in arguments:
+                  raise SystemExit(f'Unsupported database in versions.json: {name}')
+              if selected not in ('all', name):
+                  continue
+              if series_filter != 'all' and series_filter not in supported:
+                  raise SystemExit(f'Unsupported {name} series: {series_filter}')
+              for series, version in supported.items():
+                  if not re.fullmatch(r'[0-9]+(?:\.[0-9]+)*', series) or not re.fullmatch(re.escape(series) + r'\.[0-9]+', version):
+                      raise SystemExit(f'Invalid {name} version mapping: {series} -> {version}')
+                  if series_filter not in ('all', series):
+                      continue
+                  build_args = f'{arguments[name]}={version}'
+                  if name == 'redis':
+                      variant = 'trixie' if series == '8.10' else 'bookworm'
+                      build_args += f'\nREDIS_VARIANT={variant}'
+                  image = f'1panel/{name}-cluster:{series}'
+                  images.append({'image': image})
+                  for architecture, runner in [('amd64', 'ubuntu-24.04'), ('arm64', 'ubuntu-24.04-arm')]:
+                      builds.append({
+                          'database': name,
+                          'build_args': build_args,
+                          'version': version,
+                          'series': series,
+                          'architecture': architecture,
+                          'runner': runner,
+                          'image': f'{image}-{architecture}',
+                      })
+          print('matrix=' + json.dumps({'include': builds}))
+          print('images=' + json.dumps({'include': images}))
+          PY
+
+  build:
+    needs: prepare
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.prepare.outputs.matrix) }}
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Build native image
+        uses: docker/build-push-action@v6
+        with:
+          context: database-ha/${{ matrix.database }}
+          platforms: linux/${{ matrix.architecture }}
+          load: true
+          pull: true
+          build-args: ${{ matrix.build_args }}
+          tags: ${{ matrix.image }}
+          labels: |
+            org.opencontainers.image.source=https://github.com/1Panel-dev/runtime
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.version=${{ matrix.version }}
+          cache-from: type=gha,scope=${{ matrix.database }}-${{ matrix.series }}-${{ matrix.architecture }}
+          cache-to: type=gha,scope=${{ matrix.database }}-${{ matrix.series }}-${{ matrix.architecture }},mode=max
+
+      - name: Check replication and persistence
+        env:
+          DATABASE: ${{ matrix.database }}
+          IMAGE: ${{ matrix.image }}
+        run: bash "checks/check-${DATABASE}-cluster.sh" "$IMAGE"
+
+      - name: Login to Docker Hub
+        if: github.event_name == 'workflow_dispatch' && inputs.publish
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_PASSWORD }}
+
+      - name: Push verified architecture
+        if: github.event_name == 'workflow_dispatch' && inputs.publish
+        env:
+          IMAGE: ${{ matrix.image }}
+        run: docker push "$IMAGE"
+
+  publish:
+    if: github.event_name == 'workflow_dispatch' && inputs.publish
+    needs: [prepare, build]
+    strategy:
+      matrix: ${{ fromJSON(needs.prepare.outputs.images) }}
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_PASSWORD }}
+
+      - name: Publish multi-platform manifest
+        env:
+          IMAGE: ${{ matrix.image }}
+        run: docker buildx imagetools create --tag "$IMAGE" "${IMAGE}-amd64" "${IMAGE}-arm64"
