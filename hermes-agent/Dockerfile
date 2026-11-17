@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1.7
 
-ARG BASE_IMAGE=nousresearch/hermes-agent:v0.23.1
+ARG BASE_IMAGE=nousresearch/hermes-agent:v0.23.2
 FROM ${BASE_IMAGE}
 
 LABEL org.opencontainers.image.source="https://github.com/1Panel-dev/runtime" \
