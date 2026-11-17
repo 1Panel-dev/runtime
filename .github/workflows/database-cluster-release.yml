@@ -14,7 +14,7 @@ on:
         options: [all, mysql, postgresql, redis]
         default: all
       version:
-        description: 'Supported series (e.g. 8.4, 18, 6.2); all builds every supported series'
+        description: 'Supported series (e.g. 8.4, 18, 8.10); builds the full version from versions.json'
         default: all
       publish:
         description: 'Publish to Docker Hub after both architectures pass'
@@ -74,8 +74,8 @@ jobs:
                   if name == 'redis':
                       variant = 'trixie' if series == '8.10' else 'bookworm'
                       build_args += f'\nREDIS_VARIANT={variant}'
-                  image = f'1panel/{name}-cluster:{series}'
-                  images.append({'image': image})
+                  image = f'1panel/{name}-cluster:{version}'
+                  images.append({'image': image, 'series_image': f'1panel/{name}-cluster:{series}'})
                   for architecture, runner in [('amd64', 'ubuntu-24.04'), ('arm64', 'ubuntu-24.04-arm')]:
                       builds.append({
                           'database': name,
@@ -154,4 +154,5 @@ jobs:
       - name: Publish multi-platform manifest
         env:
           IMAGE: ${{ matrix.image }}
-        run: docker buildx imagetools create --tag "$IMAGE" "${IMAGE}-amd64" "${IMAGE}-arm64"
+          SERIES_IMAGE: ${{ matrix.series_image }}
+        run: docker buildx imagetools create --tag "$IMAGE" --tag "$SERIES_IMAGE" "${IMAGE}-amd64" "${IMAGE}-arm64"

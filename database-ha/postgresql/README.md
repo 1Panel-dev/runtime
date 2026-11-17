@@ -6,18 +6,22 @@
 
 当前支持的具体数据库版本如下，与[版本清单](../versions.json)保持一致：
 
-| 支持系列 | 具体数据库版本 | 镜像标签 | 上游基础镜像 |
-| --- | --- | --- | --- |
-| 15 | **15.20** | `1panel/postgresql-cluster:15` | `postgres:15.20-bookworm` |
-| 16 | **16.16** | `1panel/postgresql-cluster:16` | `postgres:16.16-bookworm` |
-| 17 | **17.12** | `1panel/postgresql-cluster:17` | `postgres:17.12-bookworm` |
-| 18 | **18.7** | `1panel/postgresql-cluster:18` | `postgres:18.7-bookworm` |
+| 支持系列 | 具体数据库版本 | 完整版本标签 | 系列兼容别名 | 上游基础镜像 |
+| --- | --- | --- | --- | --- |
+| 15 | **15.20** | `1panel/postgresql-cluster:15.20` | `1panel/postgresql-cluster:15` | `postgres:15.20-bookworm` |
+| 16 | **16.16** | `1panel/postgresql-cluster:16.16` | `1panel/postgresql-cluster:16` | `postgres:16.16-bookworm` |
+| 17 | **17.12** | `1panel/postgresql-cluster:17.12` | `1panel/postgresql-cluster:17` | `postgres:17.12-bookworm` |
+| 18 | **18.7** | `1panel/postgresql-cluster:18.7` | `1panel/postgresql-cluster:18` | `postgres:18.7-bookworm` |
+
+发布完整版本标签并保留指向各系列最近发布补丁的兼容别名。相同数据库版本重建时沿用完整版本标签，不添加 `r` 修订后缀，digest 可能变化；需要固定具体构建时使用 digest。
+
+配套新应用包使用完整补丁版本加 `-master`、`-slave` 后缀，例如 `17.12-master`、`17.12-slave`，通过 `supportVersion: 2.6` 声明最低支持 1Panel v2.6。旧包保持历史镜像，存量迁移单独处理；该门槛不代表面板已完成旧新镜像的普通升级隔离或混合节点校验。
 
 支持范围以 2026-11-16 为准。PostgreSQL 13 已于 2025-11-13 结束维护；PostgreSQL 14 的 2026-11-12 最后一次发布公告已明确宣布结束维护，因此不再提供这两个系列。[官方版本维护策略](https://www.postgresql.org/support/versioning/)、[PostgreSQL 14 EOL 公告及当前补丁版本](https://www.postgresql.org/about/news/postgresql-187-1712-1616-1520-1425-and-19-rc-2-released-3442/)。
 
 ```bash
-docker build -t 1panel/postgresql-cluster:18 database-ha/postgresql
-docker build --build-arg POSTGRESQL_VERSION=17.12 -t 1panel/postgresql-cluster:17 database-ha/postgresql
+docker build -t 1panel/postgresql-cluster:18.7 database-ha/postgresql
+docker build --build-arg POSTGRESQL_VERSION=17.12 -t 1panel/postgresql-cluster:17.12 database-ha/postgresql
 ```
 
 支持单主、多从的异步流复制。首次启动从库通过 `pg_basebackup` 获取主库已有数据，之后持续接收 WAL。主从可以位于不同主机，通过主库可访问的地址和映射端口连接。该镜像不提供自动选主、故障转移或读写代理；从库长时间离线且所需 WAL 已被回收时，需要运维人员备份并重建从库。
@@ -55,12 +59,12 @@ docker build --build-arg POSTGRESQL_VERSION=17.12 -t 1panel/postgresql-cluster:1
 
 以上是隔离单主样本验证，不代表所有生产集群均可直接替换镜像。扩展、不同 locale、Bitnami 专属配置路径以及已有从库的迁移仍需单独验证。正式迁移前应完整备份并在隔离环境演练；复杂配置可采用从旧主库逻辑备份、恢复到新主库后重新创建从库的方式。
 
-不同主版本的数据不能直接复用，例如 PostgreSQL 17 数据不能直接挂到 `:18` 镜像。脚本检测到数据主版本与镜像不匹配会拒绝启动并保留数据；跨主版本需使用备份恢复或经过验证的 `pg_upgrade` 流程。新增 PostgreSQL 18 镜像不意味着已实现 17→18 的数据库迁移。
+不同主版本的数据不能直接复用，例如 PostgreSQL 17 数据不能直接挂到 `:18.7` 镜像。脚本检测到数据主版本与镜像不匹配会拒绝启动并保留数据；跨主版本需使用备份恢复或经过验证的 `pg_upgrade` 流程。新增 PostgreSQL 18 镜像不意味着已实现 17→18 的数据库迁移。
 
 ## 验证
 
 ```bash
-IMAGE=1panel/postgresql-cluster:18 bash checks/check-postgresql-cluster.sh
+IMAGE=1panel/postgresql-cluster:18.7 bash checks/check-postgresql-cluster.sh
 ```
 
 验证脚本从镜像读取 `PG_MAJOR`，使用唯一名称的临时网络、容器和卷，覆盖新库远程 SCRAM 认证、已有数据及从库克隆认证文件的白名单允许与拒绝、两处认证文件缺失时的默认规则、持续复制、重复启动、独立配置卷、非默认端口、特殊字符密码、异主版本数据安全拒绝及失败时保留已有目录。只清理本次创建的资源。

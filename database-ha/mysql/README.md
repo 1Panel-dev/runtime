@@ -6,15 +6,17 @@
 
 当前支持的具体数据库版本如下，与[版本清单](../versions.json)保持一致：
 
-| 支持系列 | 具体数据库版本 | 镜像标签 | 上游基础镜像 |
-| --- | --- | --- | --- |
-| 8.4 | **8.4.13** | `1panel/mysql-cluster:8.4` | `mysql:8.4.13` |
+| 支持系列 | 具体数据库版本 | 完整版本标签 | 系列兼容别名 | 上游基础镜像 |
+| --- | --- | --- | --- | --- |
+| 8.4 | **8.4.13** | `1panel/mysql-cluster:8.4.13` | `1panel/mysql-cluster:8.4` | `mysql:8.4.13` |
 
-对外镜像标签沿用系列版本号，内部上游构建版本固定为 `MYSQL_VERSION=8.4.13`。
+上游构建版本固定为 `MYSQL_VERSION=8.4.13`，发布完整版本标签并保留指向该系列最近发布补丁的兼容别名。相同数据库版本重建时沿用完整版本标签，不添加 `r` 修订后缀，digest 可能变化；需要固定具体构建时使用 digest。
+
+配套新应用包为 `8.4.13-master`、`8.4.13-slave`，通过 `supportVersion: 2.6` 声明最低支持 1Panel v2.6。旧包保持历史镜像，存量迁移单独处理；该门槛不代表面板已完成旧新镜像的普通升级隔离或混合节点校验。
 
 ```bash
-docker build --build-arg MYSQL_VERSION=8.4.13 -t 1panel/mysql-cluster:8.4 database-ha/mysql
-bash checks/check-mysql-cluster.sh 1panel/mysql-cluster:8.4
+docker build --build-arg MYSQL_VERSION=8.4.13 -t 1panel/mysql-cluster:8.4.13 database-ha/mysql
+bash checks/check-mysql-cluster.sh 1panel/mysql-cluster:8.4.13
 ```
 
 目标架构为 `linux/amd64` 和 `linux/arm64`，容器默认使用 UID/GID `1001:1001`。宿主机数据目录需由该用户拥有，与当前应用商店初始化脚本一致。

@@ -42,15 +42,17 @@ This repository builds and publishes container images used by 1Panel, covering A
 
 Database image sources and supported version mappings are grouped under [database-ha/](database-ha/README.md). Their runtime checks are maintained in the shared [checks/](checks/README.md) directory.
 
-| Image | Supported series / image tags |
-| --- | --- |
-| `1panel/mysql-cluster` | `8.4` |
-| `1panel/postgresql-cluster` | `15`, `16`, `17`, `18` |
-| `1panel/redis-cluster` | `6.2`, `7.4`, `8.10` |
+| Image | Full version tags | Series aliases |
+| --- | --- | --- |
+| `1panel/mysql-cluster` | `8.4.13` | `8.4` |
+| `1panel/postgresql-cluster` | `15.20`, `16.16`, `17.12`, `18.7` | `15`, `16`, `17`, `18` |
+| `1panel/redis-cluster` | `6.2.24`, `7.4.12`, `8.10.3` | `6.2`, `7.4`, `8.10` |
 
-Tags follow the existing 1Panel HA package version rules: MySQL and Redis use major.minor; PostgreSQL uses the major version. The exact upstream patch versions are pinned in [versions.json](database-ha/versions.json). Primary and replica nodes use the same image with different replication environment variables.
+Full version tags use the upstream database patch versions pinned in [versions.json](database-ha/versions.json), without an `r` revision suffix. Rebuilding the same database version reuses its full version tag and may change the digest; use a digest to pin a specific build. Series aliases follow the existing version rules: MySQL and Redis use major.minor; PostgreSQL uses the major version. Each alias points to its latest published patch. Primary and replica nodes use the same image with different replication environment variables.
 
-`Build Database Replication Images` builds and checks each selected series on native amd64 and arm64 runners. Select a database and series, or use `all` to build every supported entry. Manual runs default to build and test only; enabling `publish` pushes the verified architecture images and publishes the series manifest after all selected builds pass.
+`Build Database Replication Images` builds and checks each selected series on native amd64 and arm64 runners using `<full-version>-amd64` and `<full-version>-arm64` candidate tags. Select a database and series, or use `all` to build every supported entry. Manual runs default to build and test only; enabling `publish` pushes the verified architecture images and, after all selected builds pass, publishes multi-platform manifests under both the full version tag and its series alias, for example `1panel/postgresql-cluster:17.12` and `1panel/postgresql-cluster:17`.
+
+The companion new App Store packages use full database patch versions with `-master` or `-slave` suffixes and require 1Panel v2.6 through `supportVersion: 2.6`. Historical packages retain their historical images; migration of existing clusters needs a separate procedure. This minimum panel version does not mean panel-side safeguards against ordinary upgrades from old to new images or mixed-generation nodes have been implemented.
 
 The supported list includes the existing 1Panel HA series still maintained upstream and adds PostgreSQL 18 and Redis 8.10. MySQL 5.7/8.0 and PostgreSQL 13/14 have reached EOL; Redis 8.0 is marked unsupported in the upstream security policy. See [support decisions and upstream sources](database-ha/README.md#版本维护范围).
 
