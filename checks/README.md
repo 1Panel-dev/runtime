@@ -70,12 +70,12 @@ python3 checks/check-php-eol-backport.py /path/to/source-inputs
 ```bash
 bash checks/check-php-pecl.sh PHP_IMAGE
 python3 checks/check-php-legacy-runtime.py PHP_IMAGE
-bash checks/check-mysql-cluster.sh 1panel/mysql-cluster:8.4
-bash checks/check-postgresql-cluster.sh 1panel/postgresql-cluster:18
-bash checks/check-redis-cluster.sh 1panel/redis-cluster:8.10
+bash checks/check-mysql-cluster.sh 1panel/mysql-cluster:8.4.13
+bash checks/check-postgresql-cluster.sh 1panel/postgresql-cluster:18.7
+bash checks/check-redis-cluster.sh 1panel/redis-cluster:8.10.3
 ```
 
-将 `PHP_IMAGE` 替换为待验证的 PHP 镜像名称。数据库镜像构建方法与支持版本见 [database-ha](../database-ha/README.md)。
+将 `PHP_IMAGE` 替换为待验证的 PHP 镜像名称。数据库示例使用完整版本标签，指向本地构建的待发布候选镜像；CI 传入的是同一候选的架构标签，例如 `1panel/redis-cluster:8.10.3-arm64`。校验不依赖镜像先行发布。数据库镜像构建方法与支持版本见 [database-ha](../database-ha/README.md)。
 
 数据库校验使用唯一名称创建临时容器、网络和数据卷，结束时清理本次创建的资源。PHP 运行校验同样使用临时容器；PECL 校验会在容器中联网下载和编译扩展。
 
@@ -84,8 +84,8 @@ bash checks/check-redis-cluster.sh 1panel/redis-cluster:8.10
 三个数据库校验脚本已接入 [Build Database Replication Images](../.github/workflows/database-cluster-release.yml)：
 
 - 涉及数据库源码或数据库校验脚本的 PR，会触发对应工作流，从版本清单生成 amd64、arm64 构建及运行校验任务。
-- 每个任务先构建镜像，再调用对应的 `check-*-cluster.sh`；该项校验失败会阻止该项镜像推送。
-- PR 只构建和校验。手动运行时 `publish` 默认为 `false`；启用后才推送已验证的架构镜像，并在全部选中任务通过后发布多架构标签。
+- 每个任务先构建 `<完整版本>-amd64` 或 `<完整版本>-arm64` 候选镜像，再将该镜像传给对应的 `check-*-cluster.sh`；该项校验失败会阻止该项镜像推送。
+- PR 只构建和校验。手动运行时 `publish` 默认为 `false`；启用后才推送已验证的完整版本架构镜像，并在全部选中任务通过后，为完整版本标签和系列兼容别名发布多架构 manifest，不添加 `r` 修订后缀。同数据库版本重建会沿用标签，digest 可能变化；固定具体构建时使用 digest。
 
 本目录中的 Java、PHP 校验脚本目前由维护者手动执行，尚未在现有发布工作流中调用。
 
@@ -94,6 +94,7 @@ bash checks/check-redis-cluster.sh 1panel/redis-cluster:8.10
 - 退出码 `0` 表示本次实际执行的检查项通过；非零表示失败，需要结合报错和容器日志定位。
 - `SKIP` 表示该项未验证。例如没有提供 PHP 7.3.33 源码包时，其源码校验会跳过，不能据此认定该项通过。
 - 源码检查通过后，仍需对构建出的镜像执行运行校验。容器检查的结论限定于本次镜像版本、架构和脚本覆盖的场景。
+- 配套新数据库应用包最低支持 1Panel v2.6（`supportVersion: 2.6`），旧包保持历史镜像。镜像校验不验证面板的旧新镜像升级隔离或混合节点校验。
 - 生产旧数据迁移、跨主版本升级和真实多机部署需要单独验证；一次临时环境检查不覆盖这些场景。
 
 维护时沿用 `check-*` 命名，将共享校验集中放在本目录，并在本说明中补齐用途、输入和依赖。涉及仓库文件时，通过脚本自身位置定位仓库根目录，保持从不同工作目录执行的行为一致。

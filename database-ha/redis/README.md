@@ -6,23 +6,27 @@
 
 当前支持的具体数据库版本如下，与[版本清单](../versions.json)保持一致：
 
-| 支持系列 | 具体数据库版本 | 镜像标签 | 上游基础镜像 |
-| --- | --- | --- | --- |
-| 6.2 | **6.2.24** | `1panel/redis-cluster:6.2` | `redis:6.2.24-bookworm` |
-| 7.4 | **7.4.12** | `1panel/redis-cluster:7.4` | `redis:7.4.12-bookworm` |
-| 8.10 | **8.10.3** | `1panel/redis-cluster:8.10` | `redis:8.10.3-trixie` |
+| 支持系列 | 具体数据库版本 | 完整版本标签 | 系列兼容别名 | 上游基础镜像 |
+| --- | --- | --- | --- | --- |
+| 6.2 | **6.2.24** | `1panel/redis-cluster:6.2.24` | `1panel/redis-cluster:6.2` | `redis:6.2.24-bookworm` |
+| 7.4 | **7.4.12** | `1panel/redis-cluster:7.4.12` | `1panel/redis-cluster:7.4` | `redis:7.4.12-bookworm` |
+| 8.10 | **8.10.3** | `1panel/redis-cluster:8.10.3` | `1panel/redis-cluster:8.10` | `redis:8.10.3-trixie` |
+
+发布完整版本标签并保留指向各系列最近发布补丁的兼容别名。相同数据库版本重建时沿用完整版本标签，不添加 `r` 修订后缀，digest 可能变化；需要固定具体构建时使用 digest。
+
+配套新应用包使用完整补丁版本加 `-master`、`-slave` 后缀，例如 `7.4.12-master`、`7.4.12-slave`，通过 `supportVersion: 2.6` 声明最低支持 1Panel v2.6。旧包保持历史镜像，存量迁移单独处理；该门槛不代表面板已完成旧新镜像的普通升级隔离或混合节点校验。
 
 按 2026-11-16 核对的[官方安全支持政策](https://github.com/redis/redis/security)，6.2 处于延长安全支持期，7.4 和 8.10 仍受支持，8.0 已标为不支持，因此不再构建原安装包中的 8.0 系列。[版本周期页面](https://redis.io/docs/latest/operate/oss_and_stack/install/version-mgmt/)与安全政策对 8.0 的状态存在冲突，此处以当前安全补丁支持状态作为筛选依据，不推断其准确 EOL 日期。
 
 在仓库根目录构建：
 
 ```bash
-docker build --build-arg REDIS_VERSION=6.2.24 -t 1panel/redis-cluster:6.2 database-ha/redis
-IMAGE=1panel/redis-cluster:6.2 bash checks/check-redis-cluster.sh
-docker build --build-arg REDIS_VERSION=7.4.12 -t 1panel/redis-cluster:7.4 database-ha/redis
-IMAGE=1panel/redis-cluster:7.4 bash checks/check-redis-cluster.sh
-docker build --build-arg REDIS_VERSION=8.10.3 --build-arg REDIS_VARIANT=trixie -t 1panel/redis-cluster:8.10 database-ha/redis
-IMAGE=1panel/redis-cluster:8.10 bash checks/check-redis-cluster.sh
+docker build --build-arg REDIS_VERSION=6.2.24 -t 1panel/redis-cluster:6.2.24 database-ha/redis
+IMAGE=1panel/redis-cluster:6.2.24 bash checks/check-redis-cluster.sh
+docker build --build-arg REDIS_VERSION=7.4.12 -t 1panel/redis-cluster:7.4.12 database-ha/redis
+IMAGE=1panel/redis-cluster:7.4.12 bash checks/check-redis-cluster.sh
+docker build --build-arg REDIS_VERSION=8.10.3 --build-arg REDIS_VARIANT=trixie -t 1panel/redis-cluster:8.10.3 database-ha/redis
+IMAGE=1panel/redis-cluster:8.10.3 bash checks/check-redis-cluster.sh
 ```
 
 `REDIS_VERSION` 用于选择受支持系列的补丁版本，默认 `7.4.12`；`REDIS_VARIANT` 用于选择上游 Debian 发行版，默认 `bookworm`。6.2 和 7.4 使用 Debian 12 Bookworm，8.10 使用 Debian 13 Trixie；官方没有 `8.10.3-bookworm` 标签，因此构建 8.10 时需要同时指定两个参数。发行版差异影响基础系统和依赖包，运行时的环境变量、目录和 UID/GID 约定保持一致。
@@ -50,7 +54,7 @@ IMAGE=1panel/redis-cluster:8.10 bash checks/check-redis-cluster.sh
 
 `REDIS_EXTRA_FLAGS` 沿用原脚本按空白分词的行为，不执行 Shell 表达式，也不解释其中的 Shell 引号。针对当前应用包的 `--requirepass ${REDIS_PASSWORD}`，入口将整段密码作为单个参数处理，可保留空格、引号、反斜杠、美元符号等字符。其他带空白的参数值请通过配置文件或容器命令参数数组传入。
 
-本镜像只提供固定主从复制，不提供 Sentinel 自动选主、Redis Cluster 分片或主节点故障后的自动切换。替换镜像不会改变现有复制拓扑。升级应先在数据副本上验证同版本换镜像，再验证同系列补丁升级；不要直接复用跨大版本升级后写入的数据进行降级。6.2 使用单文件 AOF，7.4 和 8.10 使用多文件 AOF；配置文件和数据需要与目标系列匹配，不能将含 `appenddirname` 等新配置的 7.4、8.10 配置直接套给 6.2。
+本镜像只提供固定主从复制，不提供 Sentinel 自动选主、Redis Cluster 分片或主节点故障后的自动切换。替换镜像不会改变现有复制拓扑。升级应先在数据副本上验证同版本换镜像，再验证同系列补丁升级；8.0→8.10 属于跨系列升级，不能作为普通补丁更新。不要直接复用跨系列升级后写入的数据进行降级。6.2 使用单文件 AOF，7.4 和 8.10 使用多文件 AOF；配置文件和数据需要与目标系列匹配，不能将含 `appenddirname` 等新配置的 7.4、8.10 配置直接套给 6.2。
 
 验证脚本使用唯一名称创建容器、网络和数据卷，测试不同密码、非默认端口、连续写入、主节点重启持久化、从节点离线 AOF 恢复和重新连接，并根据镜像的 `REDIS_VERSION` 检查对应的单文件或多文件 AOF。复制就绪和重连通过轮询从库中的新值确认；脚本还通过 `CLIENT PAUSE WRITE` 制造受控复制延迟，先确认旧值仍可读取，再等待新值，避免将不同连接上的 `WAIT` 当作同步屏障。脚本仅清理本次创建的资源，不等同于旧 Bitnami 数据升级或真实多主机部署验证。
 

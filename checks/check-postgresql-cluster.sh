@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
-image="${1:-${IMAGE:-1panel/postgresql-cluster:18}}"
+image="${1:-${IMAGE:-1panel/postgresql-cluster:18.7}}"
 prefix="1panel-pg-check-$(date +%s)-$$"
 network="$prefix-network"
 master="$prefix-master"

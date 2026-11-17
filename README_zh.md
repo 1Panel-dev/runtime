@@ -42,15 +42,17 @@
 
 三类数据库的源码和版本映射放在 [database-ha/](database-ha/README.md)，运行校验脚本统一维护在根目录的 [checks/](checks/README.md)。
 
-| 镜像 | 支持系列与镜像标签 |
-| --- | --- |
-| `1panel/mysql-cluster` | `8.4` |
-| `1panel/postgresql-cluster` | `15`、`16`、`17`、`18` |
-| `1panel/redis-cluster` | `6.2`、`7.4`、`8.10` |
+| 镜像 | 完整版本标签 | 系列兼容别名 |
+| --- | --- | --- |
+| `1panel/mysql-cluster` | `8.4.13` | `8.4` |
+| `1panel/postgresql-cluster` | `15.20`、`16.16`、`17.12`、`18.7` | `15`、`16`、`17`、`18` |
+| `1panel/redis-cluster` | `6.2.24`、`7.4.12`、`8.10.3` | `6.2`、`7.4`、`8.10` |
 
-版本规则沿用当前 1Panel 高可用安装包：MySQL、Redis 使用主次版本号，PostgreSQL 使用主版本号。实际构建使用的补丁版本固定在 [versions.json](database-ha/versions.json)。主从节点使用同一个镜像，通过复制环境变量区分角色。
+完整版本标签使用 [versions.json](database-ha/versions.json) 固定的数据库补丁版本，不添加 `r` 修订后缀。相同数据库版本重建时沿用完整版本标签，digest 可能变化；需要固定具体构建时使用 digest。系列兼容别名沿用已有版本规则：MySQL、Redis 使用主次版本号，PostgreSQL 使用主版本号，指向该系列最近发布的补丁版本。主从节点使用同一个镜像，通过复制环境变量区分角色。
 
-`Build Database Replication Images` 在原生 amd64、arm64 Runner 上构建并验证所选系列。可以选择数据库和系列，也可以使用 `all` 构建全部支持项。手动运行默认只构建测试；启用 `publish` 后推送已验证的架构镜像，并在全部选中任务通过后发布系列标签的多架构 manifest。
+`Build Database Replication Images` 在原生 amd64、arm64 Runner 上，以 `<完整版本>-amd64`、`<完整版本>-arm64` 候选标签构建并验证所选系列。可以选择数据库和系列，也可以使用 `all` 构建全部支持项。手动运行默认只构建测试；启用 `publish` 后推送已验证的架构镜像，并在全部选中任务通过后，为完整版本标签和系列兼容别名发布多架构 manifest，例如 `1panel/postgresql-cluster:17.12` 和 `1panel/postgresql-cluster:17`。
+
+配套新应用商店包以完整数据库补丁版本加 `-master`、`-slave` 角色后缀命名，通过 `supportVersion: 2.6` 声明最低支持 1Panel v2.6。旧包保持历史镜像，存量集群迁移单独处理；该版本门槛不代表面板已完成旧新镜像的普通升级隔离或混合节点校验。
 
 支持范围覆盖当前 1Panel 高可用仍有上游维护的系列，并新增 PostgreSQL 18、Redis 8.10。MySQL 5.7/8.0、PostgreSQL 13/14 已结束维护；Redis 8.0 已被上游安全政策列为不支持，详见[版本维护范围及官方来源](database-ha/README.md#版本维护范围)。
 
