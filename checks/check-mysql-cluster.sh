@@ -57,6 +57,34 @@ wait_count() {
     return 1
 }
 
+check_logs() {
+    local container="$1" role="$2" phase="$3"
+    shift 3
+    local log_file="$test_dir/$role-$phase.log" message started_at missing='required MySQL startup logs'
+    started_at="$(docker inspect --format '{{.State.StartedAt}}' "$container")"
+    local deadline=$((SECONDS + 60))
+    while (( SECONDS < deadline )); do
+        docker logs --since "$started_at" "$container" > "$log_file" 2>&1
+        missing=''
+        for message in "$@"; do
+            if ! grep -Fq -- "[INFO] MySQL cluster ($role): $message" "$log_file"; then
+                missing="$message"
+                break
+            fi
+        done
+        if [[ -z "$missing" ]] && ! grep -Eq "\\[INFO\\] MySQL cluster \\($role\\): Starting MySQL $role with server ID [0-9]+" "$log_file"; then
+            missing='MySQL startup stage'
+        fi
+        if [[ -z "$missing" ]] && ! grep -Eq '\[MY-010931\].*ready for connections.*port: 3306([[:space:]]|$)' "$log_file"; then
+            missing='MySQL engine readiness on port 3306'
+        fi
+        [[ -n "$missing" ]] || return 0
+        sleep 1
+    done
+    echo "Log check timed out after 60s: $container ($phase), waiting for $missing" >&2
+    return 1
+}
+
 run_replica() {
     docker run -d --name "$replica" --network "$network" \
       -e MYSQL_REPLICATION_MODE=slave -e MYSQL_REPLICATION_USER=replicator \
@@ -94,6 +122,8 @@ docker run -d --name "$master" --network "$network" \
   -v "$master_volume:/bitnami/mysql/data" \
   -v "$test_dir/my.cnf:/opt/bitnami/mysql/conf/my.cnf" "$image" >/dev/null
 wait_healthy "$master"
+check_logs "$master" master initial \
+  'Configuring root authentication' 'Creating replication account' 'Initialization complete'
 [[ "$(docker exec "$master" id -u)" == 1001 ]]
 docker exec -e MYSQL_PWD="$root_password" "$master" mysqladmin --user=root ping >/dev/null
 [[ "$(query "$master" "SELECT plugin FROM mysql.user WHERE User='root' AND Host='localhost'")" == mysql_native_password ]]
@@ -107,6 +137,10 @@ docker exec -i -e MYSQL_PWD="$root_password" "$master" mysql --user=root ha_rest
 run_replica
 wait_healthy "$replica"
 wait_count 3
+check_logs "$replica" slave initial \
+  'Configuring root authentication' "Waiting for master $master:3306" 'Master connection established' \
+  'Creating initial dump from master' 'Restoring initial dump' "Configuring replication from $master:3306" \
+  'Replication configuration applied' 'Initialization complete'
 [[ "$(query "$replica" 'SELECT content FROM ha_test.records WHERE id=2')" == 'existing data' ]]
 [[ "$(query "$replica" 'SELECT @@super_read_only')" == 1 ]]
 if query "$replica" "INSERT INTO ha_test.records VALUES (99,'must fail')" >/dev/null 2>&1; then
@@ -123,6 +157,7 @@ docker rm -v "$replica" >/dev/null
 run_replica
 wait_healthy "$replica"
 wait_count 5
+check_logs "$replica" slave persisted 'Using existing data'
 [[ "$(query "$replica" 'SELECT @@server_id')" == "$server_id" ]]
 if docker run --rm -e MYSQL_REPLICATION_MODE=slave -e MYSQL_REPLICATION_USER=replicator \
   -e MYSQL_REPLICATION_PASSWORD="$replication_password" -e MYSQL_ROOT_PASSWORD="$root_password" \
@@ -135,6 +170,7 @@ grep -q 'different replication role' "$test_dir/wrong-role.log"
 docker exec "$master" rm /bitnami/mysql/data/.1panel-replication-mode
 docker restart "$master" >/dev/null
 wait_healthy "$master"
+check_logs "$master" master persisted 'Using existing data'
 query "$master" "INSERT INTO ha_test.records VALUES (6,'after master restart');" >/dev/null
 wait_count 6
 [[ "$(query "$replica" "SELECT COUNT(*) FROM performance_schema.replication_applier_status WHERE SERVICE_STATE='ON'")" == 1 ]]
@@ -151,4 +187,14 @@ if docker run --rm -e MYSQL_REPLICATION_MODE=master -e MYSQL_REPLICATION_USER=re
     exit 1
 fi
 grep -q 'previous initialization did not finish' "$test_dir/unfinished-init.log"
+for log_file in "$test_dir/"*.log; do
+    for password in "$root_password" "$replication_password" unused-on-dump-replica; do
+        escaped_password="${password//\\/\\\\}"
+        escaped_password="$(printf '%s' "$escaped_password" | sed "s/'/''/g")"
+        if grep -Fq -- "$password" "$log_file" || grep -Fq -- "$escaped_password" "$log_file"; then
+            echo "Configured password found in container output: $(basename "$log_file")" >&2
+            exit 1
+        fi
+    done
+done
 echo "MySQL cluster runtime checks passed: $image"

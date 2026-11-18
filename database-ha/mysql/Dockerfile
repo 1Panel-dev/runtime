@@ -22,7 +22,8 @@ COPY healthcheck.sh /opt/bitnami/scripts/mysql/healthcheck.sh
 
 RUN chmod 0755 /usr/local/bin/1panel-mysql-entrypoint /opt/bitnami/scripts/mysql/healthcheck.sh && \
     chown mysql:mysql /opt/bitnami/mysql/conf/my.cnf && \
-    ln -sf /opt/bitnami/mysql/conf/my.cnf /etc/my.cnf
+    ln -sf /opt/bitnami/mysql/conf/my.cnf /etc/my.cnf && \
+    ln -sf /proc/1/fd/1 /opt/bitnami/mysql/logs/mysqld.log
 
 USER 1001:1001
 
