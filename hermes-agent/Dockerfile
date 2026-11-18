@@ -3,7 +3,7 @@
 ARG BASE_IMAGE=nousresearch/hermes-agent:v0.23.2
 FROM ${BASE_IMAGE}
 
-LABEL org.opencontainers.image.source="https://github.com/1Panel-dev/runtime" \
+LABEL org.opencontainers.image.source="https://github.com/1Panel-dev/containers" \
   org.opencontainers.image.title="1Panel Hermes Agent" \
   org.opencontainers.image.description="Hermes Agent image maintained by 1Panel with bundled messaging channel dependencies"
 

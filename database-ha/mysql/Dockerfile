@@ -1,7 +1,7 @@
 ARG MYSQL_VERSION=8.4.13
 FROM mysql:${MYSQL_VERSION}
 
-LABEL org.opencontainers.image.source="https://github.com/1Panel-dev/runtime" \
+LABEL org.opencontainers.image.source="https://github.com/1Panel-dev/containers" \
       org.opencontainers.image.title="1Panel MySQL Cluster" \
       org.opencontainers.image.description="MySQL replication image with 1Panel application package compatibility" \
       org.opencontainers.image.vendor="1Panel"

@@ -19,7 +19,7 @@ RUN chmod 0755 /opt/dspark-patches/*.sh /opt/dspark-patches/*.py && \
 
 LABEL org.opencontainers.image.title="1Panel vLLM GB10 Dual Node" \
       org.opencontainers.image.description="1Panel-maintained DeepSeek V4 Flash DSpark runtime optimized for two NVIDIA GB10 nodes" \
-      org.opencontainers.image.source="https://github.com/1Panel-dev/runtime" \
+      org.opencontainers.image.source="https://github.com/1Panel-dev/containers" \
       org.opencontainers.image.url="https://github.com/Anemll/dspark-vllm-gx10" \
       org.opencontainers.image.vendor="1Panel" \
       org.opencontainers.image.licenses="MIT" \

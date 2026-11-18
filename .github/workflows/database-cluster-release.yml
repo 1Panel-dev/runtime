@@ -112,7 +112,7 @@ jobs:
           build-args: ${{ matrix.build_args }}
           tags: ${{ matrix.image }}
           labels: |
-            org.opencontainers.image.source=https://github.com/1Panel-dev/runtime
+            org.opencontainers.image.source=https://github.com/1Panel-dev/containers
             org.opencontainers.image.revision=${{ github.sha }}
             org.opencontainers.image.version=${{ matrix.version }}
           cache-from: type=gha,scope=${{ matrix.database }}-${{ matrix.series }}-${{ matrix.architecture }}
