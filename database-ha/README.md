@@ -43,7 +43,7 @@ database-ha/
 
 ## 构建与验证
 
-在 runtime 仓库根目录执行：
+在 containers 仓库根目录执行：
 
 ```bash
 docker build --build-arg MYSQL_VERSION=8.4.13 -t 1panel/mysql-cluster:8.4.13 database-ha/mysql

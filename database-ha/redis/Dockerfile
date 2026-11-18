@@ -2,7 +2,7 @@ ARG REDIS_VERSION=7.4.12
 ARG REDIS_VARIANT=bookworm
 FROM redis:${REDIS_VERSION}-${REDIS_VARIANT}
 
-LABEL org.opencontainers.image.source="https://github.com/1Panel-dev/runtime" \
+LABEL org.opencontainers.image.source="https://github.com/1Panel-dev/containers" \
       org.opencontainers.image.title="1Panel Redis Replication" \
       org.opencontainers.image.description="Redis replication image with compatibility for 1Panel application packages" \
       org.opencontainers.image.vendor="1Panel"

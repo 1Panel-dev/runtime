@@ -1,7 +1,7 @@
 ARG POSTGRESQL_VERSION=18.7
 FROM postgres:${POSTGRESQL_VERSION}-bookworm
 
-LABEL org.opencontainers.image.source="https://github.com/1Panel-dev/runtime" \
+LABEL org.opencontainers.image.source="https://github.com/1Panel-dev/containers" \
       org.opencontainers.image.title="1Panel PostgreSQL replication" \
       org.opencontainers.image.description="PostgreSQL streaming replication with 1Panel cluster environment variables"
 

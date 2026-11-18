@@ -21,7 +21,7 @@ FROM node:24-bookworm-slim
 
 ARG PNPM_VERSION=11.7.0
 
-LABEL org.opencontainers.image.source="https://github.com/1Panel-dev/runtime" \
+LABEL org.opencontainers.image.source="https://github.com/1Panel-dev/containers" \
       org.opencontainers.image.url="https://github.com/deepseek-ai/deepseek-harness" \
       org.opencontainers.image.title="1Panel DeepSeek Harness" \
       org.opencontainers.image.description="DeepSeek Harness image maintained by 1Panel with HTTPS access and persistent runtime data" \
