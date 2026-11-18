@@ -43,11 +43,19 @@ bash checks/check-mysql-cluster.sh 1panel/mysql-cluster:8.4.13
 - 配置：`/opt/bitnami/mysql/conf/my.cnf`，支持只读挂载
 - 健康检查：`/opt/bitnami/scripts/mysql/healthcheck.sh`
 - socket、PID：`/opt/bitnami/mysql/tmp/`
-- 错误日志：`/opt/bitnami/mysql/logs/mysqld.log`
+- 错误日志：`/opt/bitnami/mysql/logs/mysqld.log`，镜像内链接到 `/proc/1/fd/1`
 
 官方客户端默认配置路径 `/etc/my.cnf` 关联到上述兼容配置文件，因此面板直接调用 `mysql`、`mysqladmin`、`mysqldump` 时也会使用正确的 socket；兼容配置仍支持只读挂载。
 
 入口覆盖配置中的数据库程序目录、插件目录、数据目录、socket、PID、错误日志、复制日志与 server ID，以兼容现有 Bitnami 布局的配置文件。从库以 `read_only`、`super_read_only` 启动。选择 `mysql_native_password` 时会显式启用 MySQL 8.4 的该认证插件。
+
+## 日志
+
+MySQL 引擎错误日志通过上述链接写入 PID 1 的标准输出，初始化和正常运行期间都可以通过 `docker logs <容器名>` 或面板容器日志查看。日志文件路径保留用于兼容配置，不再是镜像内独立累积的普通文件。
+
+入口同时输出新库初始化、已有数据启动、等待主库、全量备份与导入、复制配置等阶段的进度。等待主库期间按间隔报告重试进度；阶段与重试消息不输出密码或完整认证命令。
+
+初始化配置完成表示入口已完成当前节点的初始化和配置步骤，不代表复制 IO、SQL 线程均已运行或数据已经追平。健康检查仅验证本地 SQL 连接；复制状态仍需通过面板主从状态或 `SHOW REPLICA STATUS\G` 检查，包括 `Replica_IO_Running`、`Replica_SQL_Running` 及对应错误字段。
 
 ## 初始化与重启
 

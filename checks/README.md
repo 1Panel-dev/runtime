@@ -30,9 +30,9 @@
 | [check-php-legacy-backport.py](check-php-legacy-backport.py) | 旧 PHP 源码包校验、补丁应用与构建失败处理 | Python 3、Shell、patch；可传入 PHP 7.3.33 源码包 |
 | [check-php-pecl.sh](check-php-pecl.sh) | 容器内下载、编译、加载 APCu 并验证缓存读写 | Bash、Docker、已构建的 PHP 镜像、网络 |
 | [check-php-legacy-runtime.py](check-php-legacy-runtime.py) | PHP CLI、FastCGI、OOM 恢复、扩展及上传行为 | Python 3、Docker、已构建的 PHP 镜像 |
-| [check-mysql-cluster.sh](check-mysql-cluster.sh) | MySQL 默认客户端、备份恢复、全量与增量复制、只读及重启恢复 | Bash、Docker、已构建的 MySQL 主从镜像 |
-| [check-postgresql-cluster.sh](check-postgresql-cluster.sh) | PostgreSQL 流复制、历史认证规则保留、配置、目录权限及数据版本保护 | Bash、Docker、已构建的 PostgreSQL 主从镜像 |
-| [check-redis-cluster.sh](check-redis-cluster.sh) | Redis 主从复制、复制延迟等待、配置优先级、密码及 RDB/AOF 恢复 | Bash、Docker、已构建的 Redis 主从镜像 |
+| [check-mysql-cluster.sh](check-mysql-cluster.sh) | MySQL 默认客户端、备份恢复、全量与增量复制、只读、重启恢复及容器日志 | Bash、Docker、已构建的 MySQL 主从镜像 |
+| [check-postgresql-cluster.sh](check-postgresql-cluster.sh) | PostgreSQL 流复制、历史认证规则保留、配置、目录权限、数据版本保护及容器日志 | Bash、Docker、已构建的 PostgreSQL 主从镜像 |
+| [check-redis-cluster.sh](check-redis-cluster.sh) | Redis 主从复制、复制延迟等待、配置优先级、密码、RDB/AOF 恢复及容器日志 | Bash、Docker、已构建的 Redis 主从镜像 |
 
 ## 何时执行
 

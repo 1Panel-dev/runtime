@@ -60,6 +60,46 @@ wait_rows() {
     return 1
 }
 
+check_log_secrets() {
+    if [[ "$1" == *"$password"* || "$1" == *"$replication_password"* ]]; then
+        printf >&2 'PostgreSQL logs exposed a configured password\n'
+        return 1
+    fi
+}
+
+check_startup_logs() {
+    local container="$1"
+    shift
+    local started_at logs message attempt
+    started_at="$(docker inspect --format '{{.State.StartedAt}}' "$container")"
+    for (( attempt=0; attempt<90; attempt++ )); do
+        logs="$(docker logs --since "$started_at" "$container" 2>&1)"
+        check_log_secrets "$logs"
+        if awk '
+            /\[INFO\] PostgreSQL cluster \((master|slave)\): Starting PostgreSQL on port / { started = 1; ready = 0; next }
+            started && /database system is ready to accept/ { ready = 1 }
+            END { exit !ready }
+        ' <<< "$logs"; then
+            break
+        fi
+        sleep 1
+    done
+    if (( attempt == 90 )); then
+        printf >&2 'PostgreSQL engine readiness log is missing after the current startup: %s\n' "$container"
+        return 1
+    fi
+    if ! grep -Eq '^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z \[INFO\] PostgreSQL cluster \((master|slave)\): ' <<< "$logs"; then
+        printf >&2 'Structured PostgreSQL startup log is missing: %s\n' "$container"
+        return 1
+    fi
+    for message in "$@"; do
+        if ! grep -Fq "$message" <<< "$logs"; then
+            printf >&2 'PostgreSQL startup log is missing for %s: %s\n' "$container" "$message"
+            return 1
+        fi
+    done
+}
+
 docker image inspect "$image" >/dev/null
 major="$(docker run --rm "$image" bash -ec 'printf "%s" "$PG_MAJOR"')"
 case "$major" in
@@ -87,6 +127,7 @@ docker run -d --name "$master" --network "$network" --network-alias pg-master \
     -e "POSTGRESQL_REPLICATION_PASSWORD=$replication_password" \
     -v "${volumes[0]}:/bitnami/postgresql" -v "${volumes[1]}:/bitnami/postgresql/conf" "$image" >/dev/null
 wait_healthy "$master"
+check_startup_logs "$master" 'Initializing master database' 'Configuring primary replication account' 'Startup configuration complete'
 [[ "$(sql "$master" 55432 'SHOW shared_buffers')" == 32MB ]]
 [[ "$(docker exec "$master" id -u)" == 1001 ]]
 [[ "$(sql "$master" 55432 "SELECT current_setting('server_version_num')::integer / 10000")" == "$major" ]]
@@ -109,6 +150,7 @@ docker exec "$master" bash -ec '
 '
 docker restart "$master" >/dev/null
 wait_healthy "$master"
+check_startup_logs "$master" 'Using existing master data; skipping initialization and base backup' 'Configuring primary replication account'
 [[ "$(sql "$master" 55432 'SELECT system_identifier FROM pg_control_system()')" == "$master_id" ]]
 [[ "$(docker exec -e "PGPASSWORD=$password" "$master" psql -h 127.0.0.1 -p 55432 -U postgres -d postgres -Atqc 'SELECT 1')" == 1 ]]
 if docker exec -e "PGPASSWORD=$password" "$master" psql -h "$master_ip" -p 55432 -U postgres -d postgres -Atqc 'SELECT 1' >/dev/null 2>&1; then
@@ -123,6 +165,7 @@ docker run -d --name "$slave" --network "$network" \
     -e "POSTGRESQL_REPLICATION_PASSWORD=$replication_password" \
     -v "${volumes[2]}:/bitnami/postgresql" -v "${volumes[3]}:/bitnami/postgresql/conf" "$image" >/dev/null
 wait_healthy "$slave"
+check_startup_logs "$slave" 'Cloning standby database from primary; waiting for base backup' 'Standby base backup complete' 'Configuring standby replication connection'
 [[ "$(sql "$slave" 55433 'SELECT pg_is_in_recovery()')" == t ]]
 [[ "$(sql "$slave" 55433 'SHOW shared_buffers')" == 48MB ]]
 [[ "$(sql "$slave" 55433 'SELECT system_identifier FROM pg_control_system()')" == "$master_id" ]]
@@ -145,9 +188,11 @@ docker stop "$slave" >/dev/null
 sql "$master" 55432 "INSERT INTO cluster_probe VALUES (3, 'offline-replica');" >/dev/null
 docker start "$slave" >/dev/null
 wait_healthy "$slave"
+check_startup_logs "$slave" 'Using existing slave data; skipping initialization and base backup' 'Configuring standby replication connection'
 wait_rows 3
 docker restart "$master" >/dev/null
 wait_healthy "$master"
+check_startup_logs "$master" 'Using existing master data; skipping initialization and base backup' 'Configuring primary replication account'
 sql "$master" 55432 "INSERT INTO cluster_probe VALUES (4, 'restarted-primary');" >/dev/null
 wait_rows 4
 [[ "$(docker exec "$slave" stat -c '%u:%g:%a' /bitnami/postgresql/conf/replication.pgpass)" == 1001:1001:600 ]]
@@ -173,6 +218,10 @@ if docker run --name "$prefix-failed" --network "$network" \
     printf >&2 'Clone unexpectedly succeeded against a closed port\n'
     exit 1
 fi
+failed_started_at="$(docker inspect --format '{{.State.StartedAt}}' "$prefix-failed")"
+failed_logs="$(docker logs --since "$failed_started_at" "$prefix-failed" 2>&1)"
+check_log_secrets "$failed_logs"
+grep -Fq '[ERROR] PostgreSQL cluster (slave): Standby base backup failed' <<< "$failed_logs"
 [[ "$(docker run --rm -v "${volumes[7]}:/conf" "$image" cat /conf/user-file)" == 'preserve configuration' ]]
 [[ -z "$(docker run --rm -v "${volumes[6]}:/bitnami/postgresql" "$image" find /bitnami/postgresql -maxdepth 1 -name '.clone.*' -print)" ]]
 
@@ -187,6 +236,7 @@ fi
 [[ "$(docker run --rm -v "${volumes[0]}:/bitnami/postgresql" "$image" cat /bitnami/postgresql/data/PG_VERSION)" == "$major" ]]
 docker start "$master" >/dev/null
 wait_healthy "$master"
+check_startup_logs "$master" 'Using existing master data; skipping initialization and base backup'
 [[ "$(sql "$master" 55432 'SELECT system_identifier FROM pg_control_system()')" == "$master_id" ]]
 [[ "$(sql "$master" 55432 'SELECT count(*) FROM cluster_probe')" == 4 ]]
 
@@ -204,6 +254,7 @@ docker run -d --user root --name "$master" --network "$network" --network-alias 
     -e "POSTGRESQL_REPLICATION_PASSWORD=$replication_password" \
     -v "${volumes[0]}:/bitnami/postgresql" -v "${volumes[1]}:/bitnami/postgresql/conf" "$image" >/dev/null
 wait_healthy "$master"
+check_startup_logs "$master" 'Preparing directory permissions and switching to the postgres user' 'Using existing master data; skipping initialization and base backup' '[WARN] PostgreSQL cluster (master): Authentication configuration is missing'
 [[ "$(docker exec "$master" stat -c '%u:%g' /bitnami/postgresql)" == 1001:1001 ]]
 [[ "$(docker exec "$master" stat -c '%u' /proc/1)" == 1001 ]]
 [[ "$(docker exec "$master" grep -Fxc 'local all all peer' /bitnami/postgresql/conf/pg_hba.conf)" == 1 ]]

@@ -62,6 +62,37 @@ wait_for() {
     return 1
 }
 
+check_logs() {
+    local container="$1" role="$2"
+    shift 2
+    local started_at logs message password missing
+    started_at="$(docker inspect --format '{{.State.StartedAt}}' "$container")"
+    local deadline=$((SECONDS + 60))
+    while (( SECONDS < deadline )); do
+        logs="$(docker logs --since "$started_at" "$container" 2>&1)"
+        for password in "$master_password" "$replica_password" config-password; do
+            if grep -Fq -- "$password" <<< "$logs"; then
+                printf 'Configured password found in container output: %s\n' "$container" >&2
+                return 1
+            fi
+        done
+        missing=''
+        for message in 'Validating replication settings' 'Preparing data and configuration directories' 'Starting Redis server' "$@"; do
+            if ! grep -Fq -- "[INFO] Redis cluster ($role): $message" <<< "$logs"; then
+                missing="$message"
+                break
+            fi
+        done
+        if [[ -z "$missing" && "$logs" != *'Ready to accept connections'* ]]; then
+            missing='Redis engine accepting connections'
+        fi
+        [[ -n "$missing" ]] || return 0
+        sleep 1
+    done
+    printf 'Log check timed out after 60s: %s, waiting for %s\n' "$container" "$missing" >&2
+    return 1
+}
+
 containers+=("$prefix-invalid" "$prefix-init")
 if docker run --rm --name "$prefix-invalid" -e REDIS_PASSWORD=unused -e REDIS_REPLICATION_MODE=sentinel "$IMAGE" >/dev/null 2>&1; then
     printf '%s\n' 'Unsupported replication mode was accepted' >&2
@@ -95,6 +126,8 @@ containers+=("$replica")
 docker start "$master" "$replica" >/dev/null
 wait_for PONG master_cli PING
 wait_for PONG replica_cli PING
+check_logs "$master" master 'Using mounted Redis configuration' 'Applying additional Redis arguments'
+check_logs "$replica" slave 'Generating default Redis configuration with AOF enabled' 'Applying replica connection settings' 'Applying additional Redis arguments'
 
 [[ "$(master_cli INFO server | tr -d '\r' | sed -n 's/^redis_version://p')" == "$redis_version" ]]
 [[ "$(docker exec "$master" id -u)" == 1001 ]]
@@ -125,6 +158,7 @@ docker exec "$replica" test -s "$aof_file"
 docker kill --signal KILL "$master" >/dev/null
 docker start "$master" >/dev/null
 wait_for PONG master_cli PING
+check_logs "$master" master 'Using mounted Redis configuration'
 [[ "$(master_cli GET counter)" == 40 ]]
 [[ "$(master_cli GET entry:40)" == 'value 40' ]]
 
@@ -143,11 +177,15 @@ docker stop --time 10 "$master" >/dev/null
 docker kill --signal KILL "$replica" >/dev/null
 docker start "$replica" >/dev/null
 wait_for PONG replica_cli PING
+check_logs "$replica" slave 'Generating default Redis configuration with AOF enabled' 'Applying replica connection settings'
 [[ "$(replica_cli GET counter)" == 80 ]]
 [[ "$(replica_cli GET entry:80)" == 'value 80' ]]
 
 docker start "$master" >/dev/null
 wait_for PONG master_cli PING
+check_logs "$master" master 'Using mounted Redis configuration'
 [[ "$(master_cli INCR counter)" == 81 ]]
 wait_for 81 replica_cli GET counter
+check_logs "$master" master 'Using mounted Redis configuration'
+check_logs "$replica" slave 'Applying replica connection settings'
 printf 'Redis %s replication, configuration, persistence and reconnect checks passed.\n' "$redis_version"
