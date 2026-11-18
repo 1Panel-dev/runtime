@@ -71,9 +71,14 @@ WORKDIR /app
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc ./
 COPY node-version.mjs ./
 COPY node-sqlite.mjs ./
+COPY node-sqlite-capabilities.mjs ./
+COPY runtime-process-bootstrap.generated.mjs ./
+COPY runtime-process-scripts.generated.mjs ./
 COPY node-runtime-update.mjs ./
 COPY node-runtime-recovery.mjs ./
+COPY cli-parent-lifetime.mjs ./
 COPY node-runtime-env.mjs ./
+COPY cli-invocation.mjs ./
 COPY cli-root-options.mjs gateway-run-argv.mjs gateway-shutdown-budget.mjs ./
 COPY node-host-launcher.mjs ./
 COPY node-compile-cache.mjs ./
@@ -87,6 +92,8 @@ COPY scripts/lib/package-dist-imports.mjs ./scripts/lib/package-dist-imports.mjs
 COPY scripts/lib/javascript-statements.mjs ./scripts/lib/javascript-statements.mjs
 COPY scripts/lib/package-lifecycle-marker.mjs ./scripts/lib/package-lifecycle-marker.mjs
 COPY scripts/lib/fs-safe-prebuild.mjs ./scripts/lib/fs-safe-prebuild.mjs
+COPY scripts/lib/fs-safe-npm-cli-preload.generated.mjs ./scripts/lib/fs-safe-npm-cli-preload.generated.mjs
+COPY scripts/lib/fs-safe-npm-cli-protocol.mjs ./scripts/lib/fs-safe-npm-cli-protocol.mjs
 COPY scripts/docker/verify-fs-safe-native.mjs ./scripts/docker/verify-fs-safe-native.mjs
 COPY scripts/docker/verify-native-addons.sh ./scripts/docker/verify-native-addons.sh
 
@@ -152,15 +159,6 @@ RUN for dir in /app/${OPENCLAW_BUNDLED_PLUGIN_DIR} /app/.agent /app/.agents; do 
       fi; \
     done
 
-# A2UI bundle may fail under QEMU cross-compilation (e.g. building amd64
-# on Apple Silicon). CI builds natively per-arch so this is a no-op there.
-# Stub it so local cross-arch builds still succeed.
-RUN pnpm_config_verify_deps_before_run=false pnpm canvas:a2ui:bundle || \
-    (echo "A2UI bundle: creating stub (non-fatal)" && \
-     mkdir -p extensions/canvas/src/host/a2ui && \
-     echo "/* A2UI bundle unavailable in this build */" > extensions/canvas/src/host/a2ui/a2ui.bundle.js && \
-     echo "stub" > extensions/canvas/src/host/a2ui/.bundle.hash && \
-     rm -rf vendor/a2ui apps/shared/OpenClawKit/Tools/CanvasA2UI)
 # Force pnpm for UI build (Bun may fail on ARM/Synology architectures)
 ENV OPENCLAW_PREFER_PNPM=1
 # Correction-release sources keep the base package version; release images
@@ -270,14 +268,14 @@ LABEL org.opencontainers.image.source="https://github.com/openclaw/openclaw" \
 
 WORKDIR /app
 
-# Install runtime utilities and the OpenMP library required by llama-server.
+# Install runtime utilities, SQLite repair tools, and OpenMP for llama-server.
 # Apply current Debian security fixes even when the pinned base is older.
 RUN --mount=type=cache,id=openclaw-bookworm-apt-cache,target=/var/cache/apt,sharing=locked \
     --mount=type=cache,id=openclaw-bookworm-apt-lists,target=/var/lib/apt,sharing=locked \
     apt-get update && \
     DEBIAN_FRONTEND=noninteractive apt-get dist-upgrade -y && \
     DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
-      ca-certificates curl git hostname libgomp1 lsof openssh-client openssl procps python3 tini && \
+      acl ca-certificates curl e2fsprogs git hostname libgomp1 lsof openssh-client openssl procps psmisc python3 tini && \
     update-ca-certificates
 
 # Refresh npm's runtime dependency tree without installing development tools.
@@ -300,9 +298,14 @@ COPY --from=runtime-assets --chown=node:node /app/pnpm-workspace.yaml .
 COPY --from=runtime-assets --chown=node:node /app/patches ./patches
 COPY --from=runtime-assets --chown=node:node /app/node-version.mjs .
 COPY --from=runtime-assets --chown=node:node /app/node-sqlite.mjs .
+COPY --from=runtime-assets --chown=node:node /app/node-sqlite-capabilities.mjs .
+COPY --from=runtime-assets --chown=node:node /app/runtime-process-bootstrap.generated.mjs .
+COPY --from=runtime-assets --chown=node:node /app/runtime-process-scripts.generated.mjs .
 COPY --from=runtime-assets --chown=node:node /app/node-runtime-update.mjs .
 COPY --from=runtime-assets --chown=node:node /app/node-runtime-recovery.mjs .
+COPY --from=runtime-assets --chown=node:node /app/cli-parent-lifetime.mjs .
 COPY --from=runtime-assets --chown=node:node /app/node-runtime-env.mjs .
+COPY --from=runtime-assets --chown=node:node /app/cli-invocation.mjs .
 COPY --from=runtime-assets --chown=node:node /app/cli-root-options.mjs /app/gateway-run-argv.mjs /app/gateway-shutdown-budget.mjs ./
 COPY --from=runtime-assets --chown=node:node /app/node-host-launcher.mjs .
 COPY --from=runtime-assets --chown=node:node /app/node-compile-cache.mjs .
@@ -481,19 +484,14 @@ USER node
 # Verify the shipped toolchain needs no privileged writes or first-run downloads.
 RUN COREPACK_ENABLE_NETWORK=0 PNPM_CONFIG_OFFLINE=true pnpm --version
 
-# Start gateway server with default config.
-# Binds to loopback (127.0.0.1) by default for security.
-#
-# IMPORTANT: With Docker bridge networking (-p 18789:18789), loopback bind
-# makes the gateway unreachable from the host. Either:
-#   - Use --network host, OR
-#   - Override --bind to "lan" (0.0.0.0) and set auth credentials
+# With no bind configured, the gateway defaults to auto inside containers.
+# Non-loopback startup requires authentication. Set gateway.bind to loopback
+# for a loopback-only listener.
 #
 # Built-in probe endpoints for container health checks:
 #   - GET /healthz (liveness), GET /startupz (startup/traffic admission),
 #     and GET /readyz (channel-aware readiness)
 #   - aliases: /health, /startup, and /ready
-# For external access from host/ingress, override bind to "lan" and set auth.
 HEALTHCHECK --interval=3m --timeout=10s --start-period=15s --retries=3 \
   CMD ["node", "dist/docker-healthcheck.js"]
 
