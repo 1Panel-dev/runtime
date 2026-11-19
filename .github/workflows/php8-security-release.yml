@@ -1,5 +1,5 @@
 name: Build PHP 8 Security Images
-run-name: Build PHP 8 Security Images 8.2.36, 8.3.37, 8.4.28, 8.5.13
+run-name: Build PHP 8 Security Images 8.3.37, 8.4.28, 8.5.13
 
 on:
   workflow_dispatch:
@@ -8,7 +8,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: php8-security-release
+  group: php83-85-parallel-20261119
   cancel-in-progress: false
 
 env:
@@ -20,9 +20,9 @@ jobs:
     runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
-      max-parallel: 1
+      max-parallel: 3
       matrix:
-        phpVersion: ["8.2.36", "8.3.37", "8.4.28", "8.5.13"]
+        phpVersion: ["8.3.37", "8.4.28", "8.5.13"]
     steps:
       - name: Checkout
         uses: actions/checkout@v6
