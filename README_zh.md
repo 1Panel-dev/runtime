@@ -74,7 +74,7 @@
 
 ## PHP 8 安全版本
 
-`Build PHP 8 Security Images` 从固定上游提交的 Dockerfile 构建 PHP 8.2.35、8.3.36、8.4.27 和 8.5.12，不依赖尚未发布的官方基础镜像标签。详见[源码来源和构建说明](php/8/upstream/README.md)。
+`Build PHP 8 Security Images` 从固定上游提交的 Dockerfile 构建 PHP 8.2.36、8.3.37、8.4.28 和 8.5.13，不依赖尚未发布的官方基础镜像标签。详见[源码来源和构建说明](php/8/upstream/README.md)。
 
 ## PHP 扩展下载
 
@@ -95,7 +95,7 @@ PHP 5.6、PHP 7 和 PHP 8 镜像在编译 PHP 后安装固定版本、校验 SHA
 
 旧 PHP 7 Action 使用已有 Dockerfile，保留此前工作流的 amd64/arm64/arm/v7 平台列表；本地 PECL 安装验证仅覆盖 amd64。备用 `php/5.6` 构建目录仍可通过 CNB 选择，两个 5.6 目录均包含 PECL 修复。
 
-PHP 8.2+ 仅在镜像内 PEAR 低于 1.10.17 时需要为本问题重打。`Build PHP 8 Security Images` 会重建固定的 `8.2.35`、`8.3.36`、`8.4.27`、`8.5.12` 四个版本。发布后重新拉取基础镜像，再重建 1Panel 运行环境。
+PHP 8.2+ 仅在镜像内 PEAR 低于 1.10.17 时需要为本问题重打。`Build PHP 8 Security Images` 会重建固定的 `8.2.36`、`8.3.37`、`8.4.28`、`8.5.13` 四个版本。发布后重新拉取基础镜像，再重建 1Panel 运行环境。
 
 ## PHP EOL 源码回补
 

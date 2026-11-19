@@ -74,7 +74,7 @@ Run the relevant offline checks before building, then validate the built image f
 
 ## PHP 8 security releases
 
-`Build PHP 8 Security Images` builds PHP 8.2.35, 8.3.36, 8.4.27 and 8.5.12 from pinned upstream Dockerfiles, without waiting for official base image tags. See [source provenance and build instructions](php/8/upstream/README.md).
+`Build PHP 8 Security Images` builds PHP 8.2.36, 8.3.37, 8.4.28 and 8.5.13 from pinned upstream Dockerfiles, without waiting for official base image tags. See [source provenance and build instructions](php/8/upstream/README.md).
 
 ## PHP extension downloads
 
@@ -95,7 +95,7 @@ Commit and push the fixes, then select that branch in Actions. Existing images a
 
 The legacy PHP 7 Action uses the existing Dockerfiles and preserves the previous workflow's amd64/arm64/arm/v7 platform list; local PECL installation checks cover amd64 only. The alternative `php/5.6` context remains available through CNB. Both 5.6 contexts include the PECL fix.
 
-For PHP 8.2+, rebuild only images whose PEAR is older than 1.10.17. `Build PHP 8 Security Images` rebuilds the fixed batch `8.2.35`, `8.3.36`, `8.4.27`, `8.5.12`. After publication, pull the updated base image and rebuild the 1Panel runtime.
+For PHP 8.2+, rebuild only images whose PEAR is older than 1.10.17. `Build PHP 8 Security Images` rebuilds the fixed batch `8.2.36`, `8.3.37`, `8.4.28`, `8.5.13`. After publication, pull the updated base image and rebuild the 1Panel runtime.
 
 ## PHP EOL source backports
 

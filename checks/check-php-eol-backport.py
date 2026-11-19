@@ -56,11 +56,19 @@ with tempfile.TemporaryDirectory() as tmp:
         if not success:
             assert 'unsupported baseline' in result.stderr
 
+# PHP 2026-11-19 release metadata, cross-checked against docker-library/php.
+security_versions = {
+    '8.2.36': 'df50a00d2b453096608bf2bd98a9fab9a3df8678a77b93011b65c3cfe9a018fa',
+    '8.3.37': '0237af84478b7a7649d3964153f1b8653d622550b846f56d63062de683fb86bb',
+    '8.4.28': '0c8ec360e5dd8154f270b2fd50cd44ecc824e6ee39c85f911312b80d4daecd72',
+    '8.5.13': '607602acaf0c3061818e9916ec44a058e8b3d43959a83862b9cd3ec7bf5b785f',
+}
+
 # Run only the existing workflow's Python assembly, never a Docker/Actions job.
 workflow = (root / '.github/workflows/php8-security-release.yml').read_text()
 assembly = textwrap.dedent(workflow.split("python3 - <<'PY'\n", 1)[1].split('\n          PY', 1)[0])
 with tempfile.TemporaryDirectory() as tmp:
-    for version in ('8.2.35', '8.3.36', '8.4.27', '8.5.12'):
+    for version, sha256 in security_versions.items():
         directory = Path(tmp) / version
         directory.mkdir()
         env = dict(os.environ, PHP_VERSION=version, RUNNER_TEMP=str(directory))
@@ -69,6 +77,13 @@ with tempfile.TemporaryDirectory() as tmp:
         assert (context / 'data/rebuild-php-eol').is_file()
         assert (context / 'data/prepare-apt').is_file()
         assert 'RUN sh /usr/local/bin/rebuild-php-eol' in (context / 'Dockerfile').read_text()
+        dockerfile = (context / 'Dockerfile').read_text()
+        assert f'ENV PHP_SHA256="{sha256}"' in dockerfile
+        assert f'https://www.php.net/distributions/php-{version}.tar.xz' in dockerfile
+        assert 'gpg --batch --verify php.tar.xz.asc php.tar.xz' in dockerfile
+        assert f'ENV PHP_VERSION {version}\n' in dockerfile
+        assert f'PHP_VERSION === "{version}"' in dockerfile
+        assert f'"{version}"' in workflow.split('phpVersion: [', 1)[1].split(']', 1)[0]
 php7 = (root / '.github/workflows/php7-release.yml').read_text()
 assert "buildPhp74:\n        description: 'Build and publish PHP 7.4'\n        type: boolean\n        default: true" in php7
 assert 'Build PHP-7.4 and Push\n        if: ${{ inputs.buildPhp74 }}' in php7
