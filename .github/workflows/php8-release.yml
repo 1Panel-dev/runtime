@@ -8,6 +8,13 @@ on:
         description: 'PHP Version'
         default: '8.4.6'
         required: true
+      platforms:
+        description: 'Platforms to publish from the official FPM image'
+        type: choice
+        default: 'linux/amd64,linux/arm/v7,linux/arm64/v8'
+        options:
+          - 'linux/amd64,linux/arm/v7,linux/arm64/v8'
+          - 'linux/amd64,linux/arm64/v8'
 jobs:
   docker:
     runs-on: ubuntu-latest
@@ -43,7 +50,7 @@ jobs:
         with:
           context: php/8
           file: php/8/Dockerfile
-          platforms: linux/amd64,linux/arm/v7,linux/arm64/v8
+          platforms: ${{ inputs.platforms }}
           push: true
           build-args:
             PHP_VERSION=${{ github.event.inputs.phpVersion }}
