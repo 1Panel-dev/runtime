@@ -6,7 +6,7 @@ on:
     inputs:
       phpVersion:
         description: 'PHP Version'
-        default: '8.4.6'
+        default: '8.6.0'
         required: true
       platforms:
         description: 'Platforms to publish from the official FPM image'
